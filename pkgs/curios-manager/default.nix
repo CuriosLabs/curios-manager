@@ -4,21 +4,21 @@
 { lib, stdenvNoCC, fetchFromGitHub, pkgs }:
 stdenvNoCC.mkDerivation rec {
   pname = "curios-manager";
-  version = "0.8";
+  version = "0.9";
 
   src = fetchFromGitHub {
     owner = "CuriosLabs";
     repo = "curios-manager";
     rev = version;
-    hash = "sha256-h1eqW7leREorRjIFIQ/oRAkKJ9sshblqAESlVvxBL9U=";
+    hash = "sha256-EEqMw02TDtm8kH/UwgaDgMCXif+iqXJ8JUUN3oyCKYI=";
   };
 
-  dontPatch = false;
+  dontPatch = true;
   dontConfigure = true;
   dontBuild = true;
-  postPatch = ''
-    patchShebangs
-  '';
+  #postPatch = ''
+  #  patchShebangs
+  #'';
   desktopItem = pkgs.makeDesktopItem {
     name = "dev.curioslabs.curiosmanager";
     exec = "/run/current-system/sw/bin/alacritty -e curios-manager";
@@ -32,6 +32,7 @@ stdenvNoCC.mkDerivation rec {
 
     mkdir -p  $out/bin/
     install -D -m 555 -t $out/bin/ bin/curios-manager
+    install -D -m 555 -t $out/bin/ bin/curios-update
 
     mkdir -p $out/share
     cp -r ${desktopItem}/share/applications $out/share
