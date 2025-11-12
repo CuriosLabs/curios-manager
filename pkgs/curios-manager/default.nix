@@ -8,7 +8,7 @@ stdenvNoCC.mkDerivation rec {
 
   src = fetchFromGitHub {
     owner = "CuriosLabs";
-    repo = "nixos-dotfiles";
+    repo = "curios-manager";
     rev = version;
     hash = "";
   };
