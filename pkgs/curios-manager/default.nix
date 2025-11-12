@@ -31,13 +31,13 @@ stdenvNoCC.mkDerivation rec {
     runHook preInstall
 
     mkdir -p  $out/bin/
-    install -D -m 555 -t $out/bin/ bin/curios-manager
-    install -D -m 555 -t $out/bin/ bin/curios-update
+    install -D -m 555 -t $out/bin/ pkgs/curios-manager/bin/curios-manager
+    install -D -m 555 -t $out/bin/ pkgs/curios-manager/bin/curios-update
 
     mkdir -p $out/share
     cp -r ${desktopItem}/share/applications $out/share
     mkdir -p $out/share/icons/hicolor/scalable/apps
-    cp share/icons/hicolor/scalable/apps/nixos.svg $out/share/icons/hicolor/scalable/apps/desktop-curios-manager.svg
+    cp pkgs/curios-manager/share/icons/hicolor/scalable/apps/nixos.svg $out/share/icons/hicolor/scalable/apps/desktop-curios-manager.svg
 
     runHook postInstall
   '';
