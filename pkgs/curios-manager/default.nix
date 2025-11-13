@@ -4,7 +4,7 @@
 { lib, stdenvNoCC, fetchFromGitHub, pkgs }:
 stdenvNoCC.mkDerivation rec {
   pname = "curios-manager";
-  version = "0.9";
+  version = "0.10";
 
   src = fetchFromGitHub {
     owner = "CuriosLabs";
