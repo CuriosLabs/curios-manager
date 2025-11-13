@@ -17,7 +17,7 @@ readonly YELLOW="\033[33;1;3m"     # Yellow, bold and italic
 readonly NC="\033[0m"              # No Color
 
 #------------- Variables init
-readonly SCRIPT_VERSION="0.9";
+readonly SCRIPT_VERSION="0.10";
 VERBOSE=0;
 readonly CURIOS_SRC_URL="https://github.com/CuriosLabs/CuriOS";
 LIST_GEN="";
@@ -158,6 +158,33 @@ app_menu() {
   esac
 }
 
+#------------- Disk menu
+disk_menu() {
+  local APP_MENU
+  APP_MENU=$(gum choose --header "Select an option:" "󰋊 Disk usage" "󰋜 Home folder usage" " Root folder usage" "󰋊 Disk S.M.A.R.T health status" " Back" )
+  case $APP_MENU in
+    "󰋊 Disk usage")
+      duf -only-mp "/,/boot,/home"
+      disk_menu
+      ;;
+    "󰋜 Home folder usage")
+      dust -D "$HOME"
+      disk_menu
+      ;;
+    " Root folder usage")
+      sudo dust -D -X /home /
+      disk_menu
+      ;;
+    "󰋊 Disk S.M.A.R.T health status")
+      sudo smartctl -H -A /dev/disk/by-label/curiosystem
+      disk_menu
+      ;;
+    " Back")
+      main_menu
+      ;;
+  esac
+}
+
 #------------- Help menu
 help_menu() {
   local HELP_MENU
@@ -193,7 +220,7 @@ system_menu() {
   local SETTINGS_FILE
   local SETTINGS_LAST_MOD
   local SYSTEM_MENU
-  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󰋊 Disk usage" " Settings (manual edit)" " Firmware" " Info" " Back" )
+  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󰋊 Disk infos" " Settings (manual edit)" " Firmware" " Info" " Back" )
   case $SYSTEM_MENU in
     " Shutdown")
       #sudo shutdown -P now
@@ -210,10 +237,10 @@ system_menu() {
       ;;
     "󱃶 Process Management")
       btop
+      system_menu
       ;;
-    "󰋊 Disk usage")
-      duf -only-mp "/,/boot,/home"
-      #sudo smartctl -H -A /dev/disk/by-label/curiosystem
+    "󰋊 Disk infos")
+      disk_menu
       ;;
     " Settings (manual edit)")
       SETTINGS_FILE="/etc/nixos/settings.nix"
@@ -227,6 +254,7 @@ system_menu() {
         echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
         reboot_check
       fi
+      system_menu
       ;;
     " Firmware")
       gum spin --spinner globe --title "Refreshing firmware metadata..." --show-error -- fwupdmgr refresh --force
@@ -243,14 +271,15 @@ system_menu() {
         done
         echo ""
         #gum confirm "Would you like to update all devices now ?" && sudo whoami 1>/dev/null && gum spin --spinner dot --title "Updating firmware..." --show-error -- sudo fwupdmgr update
-        gum confirm "Would you like to update all devices now ?" || exit 0
-        sudo fwupdmgr update
+        gum confirm "Would you like to update all devices now ?" && sudo fwupdmgr update
       else
         echo -e "${GREEN}Nothing to update.${NC}"
       fi
+      system_menu
       ;;
     " Info")
-      fastfetch --command-shell /run/current-system/sw/bin/zsh
+      fastfetch
+      system_menu
       ;;
     " Back")
       main_menu
