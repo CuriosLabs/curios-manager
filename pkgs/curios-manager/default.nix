@@ -1,7 +1,7 @@
 # CuriOS Manager package.
 # Various tools to manage your CuriOS system.
 
-{ lib, stdenvNoCC, fetchFromGitHub, pkgs }:
+{ lib, stdenvNoCC, fetchFromGitHub, pkgs, makeWrapper }:
 stdenvNoCC.mkDerivation rec {
   pname = "curios-manager";
   version = "0.12";
@@ -26,6 +26,7 @@ stdenvNoCC.mkDerivation rec {
     pkgs.terminaltexteffects
     pkgs.wget
   ];
+  nativeBuildInputs = [ makeWrapper ];
   dontPatch = true;
   dontConfigure = true;
   dontBuild = true;
