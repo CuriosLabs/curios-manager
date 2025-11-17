@@ -18,6 +18,7 @@ stdenvNoCC.mkDerivation rec {
     pkgs.duf
     pkgs.dust
     pkgs.fastfetch
+    pkgs.gnutar
     pkgs.gum
     pkgs.jq
     pkgs.libnotify
