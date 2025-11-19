@@ -17,7 +17,7 @@ readonly YELLOW="\033[33;1;3m"     # Yellow, bold and italic
 readonly NC="\033[0m"              # No Color
 
 #------------- Variables init
-readonly SCRIPT_VERSION="0.13";
+readonly SCRIPT_VERSION="0.14";
 VERBOSE=0;
 readonly CURIOS_SRC_URL="https://github.com/CuriosLabs/CuriOS";
 LIST_GEN="";
@@ -316,6 +316,7 @@ main_menu() {
       SKEL_DIR="/etc/skel/"
       CURRENT_KEYBOARD=$(grep -oP 'keyboard\s*=\s*"\K[^"]+' /etc/nixos/settings.nix)
       sudo curios-update --upgrade
+      status=$?
       # Updating dotfiles
       if [[ $(curios-dotfiles --version) != "$DOTFILES_VERSION" ]]; then
         # curios-dotfiles has been updated. We re-launch it.
@@ -331,8 +332,13 @@ main_menu() {
         sudo curios-dotfiles --lang "$CURRENT_KEYBOARD" "$SKEL_DIR"
       fi
       # Check if a reboot is necessary
-      nix_generations
-      reboot_check
+      #nix_generations
+      #reboot_check
+      if [ $status -eq 2 ]; then
+        echo -e "A new CuriOS system was installed - ${YELLOW}You should REBOOT now${NC}."
+        echo -e "${BLUE}Please${NC} ensure that all other applications are properly closed."
+        gum confirm "Reboot now:" && sudo reboot now
+      fi
       ;;
     " System")
       system_menu
