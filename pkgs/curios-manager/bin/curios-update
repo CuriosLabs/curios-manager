@@ -20,18 +20,18 @@
 set -eu
 
 #------------- Colors -------------#
-readonly RED="\033[31;1m"          # Red and bold
-readonly GREEN="\033[32;1m"        # Green and bold
+readonly RED="\033[31;1m"   # Red and bold
+readonly GREEN="\033[32;1m" # Green and bold
 #readonly BLUE="\033[34;1m"         # Blue and bold
-readonly GREY="\033[37;1m"         # Grey and bold
-readonly YELLOW="\033[33;1;3m"     # Yellow, bold and italic
+readonly GREY="\033[37;1m"     # Grey and bold
+readonly YELLOW="\033[33;1;3m" # Yellow, bold and italic
 #readonly YELLOWBLK="\033[33;1;5m"  # Yellow, bold and slow blink
 #readonly UNDL="\033[4m"            # Underlined
 #readonly BOLD="\033[1m"            # Bold
-readonly NC="\033[0m"              # No Color
+readonly NC="\033[0m" # No Color
 
 #------------- Print help function
-usage () {
+usage() {
   echo -e "${GREY}USAGE:${NC}
   curios-update [options]
 
@@ -51,53 +51,53 @@ ${GREY}EXAMPLES:${NC}
 }
 
 #------------- var init state
-readonly SCRIPT_VERSION="0.10";
-VERBOSE=0;
-CHECK_ONLINE=0;
-UPGRADE_SYSTEM=0;
-UPGRADABLE=0;
-LATEST_VERSION="";
-LATEST_SOURCE="";
-NIX_CHANNEL_URL="";
+readonly SCRIPT_VERSION="0.11"
+VERBOSE=0
+CHECK_ONLINE=0
+UPGRADE_SYSTEM=0
+UPGRADABLE=0
+LATEST_VERSION=""
+LATEST_SOURCE=""
+NIX_CHANNEL_URL=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
 ARGS=$(getopt --longoptions="verbose,version,help,check,upgrade" --options ":hv" -- "$@")
 if [ $# -eq 0 ]; then
   usage
-fi;
+fi
 
 eval set -- "$ARGS"
 
 while true; do
   case "$1" in
-    -v | --verbose)
-      VERBOSE=1
-      shift
-      ;;
-    -h | --help)
-      usage
-      ;;
-    --check)
-      CHECK_ONLINE=1
-      shift
-      ;;
-    --upgrade)
-      UPGRADE_SYSTEM=1
-      CHECK_ONLINE=1
-      shift
-      ;;
-    --version)
-      echo "$SCRIPT_VERSION"
-      exit 0
-      ;;
-    --)
-      shift
-      break
-      ;;
-    *)
-      break
-      ;;
+  -v | --verbose)
+    VERBOSE=1
+    shift
+    ;;
+  -h | --help)
+    usage
+    ;;
+  --check)
+    CHECK_ONLINE=1
+    shift
+    ;;
+  --upgrade)
+    UPGRADE_SYSTEM=1
+    CHECK_ONLINE=1
+    shift
+    ;;
+  --version)
+    echo "$SCRIPT_VERSION"
+    exit 0
+    ;;
+  --)
+    shift
+    break
+    ;;
+  *)
+    break
+    ;;
   esac
 done
 
@@ -124,10 +124,6 @@ if ! available wget; then
 fi
 if ! available curl; then
   echo -e "${RED}curl command not found!${NC}"
-  exit 1
-fi
-if ! available wget; then
-  echo -e "${RED}wget command not found!${NC}"
   exit 1
 fi
 if ! available jq; then
@@ -193,7 +189,7 @@ upgrade_curios() {
   fi
   # Updating system
   echo -e "${YELLOW}Updating packages...${NC}"
-  /run/current-system/sw/bin/nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
   echo -e "${GREEN}Done.${NC}"
   #cryptsetup config /dev/nvme0n1p2 --label "curiosystem"
 }
@@ -215,13 +211,13 @@ if [ $CHECK_ONLINE -eq 1 ]; then
     exit 0
   else
     if [[ "$LATEST_VERSION" == [0-9][0-9]* ]]; then
-      UPGRADABLE=1;
+      UPGRADABLE=1
       echo -e "${YELLOW}System should be upgraded.${NC}"
       if [ "$EUID" -ge 900 ]; then
-        /run/current-system/sw/bin/notify-send -a "CuriOS Updater" --urgency=critical "CuriOS ${LATEST_VERSION} is available!" "Launch Curios Manager with Super+Return (+󰌑) >  Upgrade OR in a terminal type: curios-manager"
+        notify-send -a "CuriOS Updater" --urgency=critical "CuriOS ${LATEST_VERSION} is available!" "Launch Curios Manager with Super+Return (+󰌑) >  Upgrade OR in a terminal type: curios-manager"
       fi
     else
-      UPGRADABLE=0;
+      UPGRADABLE=0
       echo -e "${YELLOW}Latest version number is not correct.${NC}"
     fi
   fi

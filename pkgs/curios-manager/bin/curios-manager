@@ -6,23 +6,23 @@
 # Dependencies: gum, tte, curios-update, curios-dotfiles
 
 #------------- Colors -------------#
-readonly RED="\033[31;1m"          # Red and bold
-readonly GREEN="\033[32;1m"        # Green and bold
-readonly BLUE="\033[34;1m"         # Blue and bold
-readonly GREY="\033[37;1m"         # Grey and bold
-readonly YELLOW="\033[33;1;3m"     # Yellow, bold and italic
+readonly RED="\033[31;1m"      # Red and bold
+readonly GREEN="\033[32;1m"    # Green and bold
+readonly BLUE="\033[34;1m"     # Blue and bold
+readonly GREY="\033[37;1m"     # Grey and bold
+readonly YELLOW="\033[33;1;3m" # Yellow, bold and italic
 #readonly YELLOWBLK="\033[33;1;5m"  # Yellow, bold and slow blink
 #readonly UNDL="\033[4m"            # Underlined
 #readonly BOLD="\033[1m"            # Bold
-readonly NC="\033[0m"              # No Color
+readonly NC="\033[0m" # No Color
 
 #------------- Variables init
-readonly SCRIPT_VERSION="0.14";
-VERBOSE=0;
-readonly CURIOS_SRC_URL="https://github.com/CuriosLabs/CuriOS";
-LIST_GEN="";
-LIST_GEN_DATE="";
-LIST_GEN_KERNEL="";
+readonly SCRIPT_VERSION="0.15"
+VERBOSE=0
+readonly CURIOS_SRC_URL="https://github.com/CuriosLabs/CuriOS"
+LIST_GEN=""
+LIST_GEN_DATE=""
+LIST_GEN_KERNEL=""
 
 export GUM_CHOOSE_CURSOR_FOREGROUND="#26a269"
 export GUM_CHOOSE_SELECTED_FOREGROUND="#26a269"
@@ -49,24 +49,24 @@ eval set -- "$ARGS"
 
 while true; do
   case "$1" in
-    -v | --verbose)
-      VERBOSE=1
-      shift
-      ;;
-    -h | --help)
-      usage
-      ;;
-    --version)
-      echo "$SCRIPT_VERSION"
-      exit 0
-      ;;
-    --)
-      shift
-      break
-      ;;
-    *)
-      break
-      ;;
+  -v | --verbose)
+    VERBOSE=1
+    shift
+    ;;
+  -h | --help)
+    usage
+    ;;
+  --version)
+    echo "$SCRIPT_VERSION"
+    exit 0
+    ;;
+  --)
+    shift
+    break
+    ;;
+  *)
+    break
+    ;;
   esac
 done
 
@@ -77,9 +77,9 @@ fi
 #precmd() { print -Pn "\e]0;CuriOS Manager" }
 # Change terminal title
 case $TERM in
-  alacritty)
-    echo -en "\e]2;CuriOS Manager\a"
-    ;;
+alacritty)
+  echo -en "\e]2;CuriOS Manager\a"
+  ;;
 esac
 
 #------------- Check dependencies
@@ -137,80 +137,80 @@ warning_print() {
 #------------- Apps menu
 app_menu() {
   local APP_MENU
-  APP_MENU=$(gum choose --header "Select an option:" "󰣆 Apps menu" "󱓞 Launcher" " Store (Flatpak)" " Back" )
+  APP_MENU=$(gum choose --header "Select an option:" "󰣆 Apps menu" "󱓞 Launcher" " Store (Flatpak)" " Back")
   case $APP_MENU in
-    "󰣆 Apps menu")
-      cosmic-app-library
-      exit 0
-      ;;
-    "󱓞 Launcher")
-      cosmic-launcher
-      exit 0
-      ;;
-    " Store (Flatpak)")
-      cosmic-store </dev/null &>/dev/null &
-      sleep 2
-      #exit 0
-      ;;
-    " Back")
-      main_menu
-      ;;
+  "󰣆 Apps menu")
+    cosmic-app-library
+    exit 0
+    ;;
+  "󱓞 Launcher")
+    cosmic-launcher
+    exit 0
+    ;;
+  " Store (Flatpak)")
+    cosmic-store </dev/null &>/dev/null &
+    sleep 2
+    #exit 0
+    ;;
+  " Back")
+    main_menu
+    ;;
   esac
 }
 
 #------------- Disk menu
 disk_menu() {
   local APP_MENU
-  APP_MENU=$(gum choose --header "Select an option:" "󰋊 Disk usage" "󰋜 Home folder usage" " Root folder usage" "󰋊 Disk S.M.A.R.T health status" " Back" )
+  APP_MENU=$(gum choose --header "Select an option:" "󰋊 Disk usage" "󰋜 Home folder usage" " Root folder usage" "󰋊 Disk S.M.A.R.T health status" " Back")
   case $APP_MENU in
-    "󰋊 Disk usage")
-      duf -only-mp "/,/boot,/home"
-      disk_menu
-      ;;
-    "󰋜 Home folder usage")
-      dust -D "$HOME"
-      disk_menu
-      ;;
-    " Root folder usage")
-      sudo dust -D -X /home /
-      disk_menu
-      ;;
-    "󰋊 Disk S.M.A.R.T health status")
-      sudo smartctl -H -A /dev/disk/by-label/curiosystem
-      disk_menu
-      ;;
-    " Back")
-      main_menu
-      ;;
+  "󰋊 Disk usage")
+    duf -only-mp "/,/boot,/home"
+    disk_menu
+    ;;
+  "󰋜 Home folder usage")
+    dust -D "$HOME"
+    disk_menu
+    ;;
+  " Root folder usage")
+    sudo dust -D -X /home /
+    disk_menu
+    ;;
+  "󰋊 Disk S.M.A.R.T health status")
+    sudo smartctl -H -A /dev/disk/by-label/curiosystem
+    disk_menu
+    ;;
+  " Back")
+    main_menu
+    ;;
   esac
 }
 
 #------------- Help menu
 help_menu() {
   local HELP_MENU
-  HELP_MENU=$(gum choose --header "Open a new browser window with:" " Shortcuts" "󰄄 CuriOS" "󰄄 CuriOS - report a bug" " NixOS Wiki" " NixOS forum" " NixOS manual" " Back" )
+  HELP_MENU=$(gum choose --header "Open a new browser window with:" " Shortcuts" "󰄄 CuriOS" "󰄄 CuriOS - report a bug" " NixOS Wiki" " NixOS forum" " NixOS manual" " Back")
   case $HELP_MENU in
-    " Shortcuts")
-      cosmic-settings keyboard 2>/dev/null
-      ;;
-    "󰄄 CuriOS")
-      xdg-open "https://github.com/CuriosLabs/CuriOS" 2>/dev/null
-      ;;
-    "󰄄 CuriOS - report a bug")
-      xdg-open "https://github.com/CuriosLabs/CuriOS/issues" 2>/dev/null
-      ;;
-    " NixOS Wiki")
-      xdg-open "https://wiki.nixos.org/wiki/NixOS_Wiki" 2>/dev/null
-      ;;
-    " NixOS forum")
-      xdg-open "https://discourse.nixos.org/" 2>/dev/null
-      ;;
-    " NixOS manual")
-      xdg-open "https://nixos.org/manual/nixos/stable/" 2>/dev/null
-      ;;
-    " Back")
-      main_menu
-      ;;
+  " Shortcuts")
+    cosmic-settings keyboard 2>/dev/null
+    ;;
+  "󰄄 CuriOS")
+    xdg-open "https://github.com/CuriosLabs/CuriOS" 2>/dev/null
+    ;;
+  "󰄄 CuriOS - report a bug")
+    xdg-open "https://github.com/CuriosLabs/CuriOS/issues" 2>/dev/null
+    ;;
+  " NixOS Wiki")
+    xdg-open "https://wiki.nixos.org/wiki/NixOS_Wiki" 2>/dev/null
+    ;;
+  " NixOS forum")
+    xdg-open "https://discourse.nixos.org/" 2>/dev/null
+    ;;
+  " NixOS manual")
+    xdg-open "https://nixos.org/manual/nixos/stable/" 2>/dev/null
+    ;;
+  " Back")
+    main_menu
+    ;;
   esac
 }
 
@@ -219,70 +219,70 @@ system_menu() {
   local SETTINGS_FILE
   local SETTINGS_LAST_MOD
   local SYSTEM_MENU
-  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󰋊 Disk infos" " Settings (manual edit)" " Firmware" " Info" " Back" )
+  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󰋊 Disk infos" " Settings (manual edit)" " Firmware" " Info" " Back")
   case $SYSTEM_MENU in
-    " Shutdown")
-      #sudo shutdown -P now
-      cosmic-osd shutdown
-      exit 0
-      ;;
-    " Reboot")
-      #sudo reboot now
-      cosmic-osd restart
-      exit 0
-      ;;
-    " Lock session")
-      loginctl lock-session
-      ;;
-    "󱃶 Process Management")
-      btop
-      system_menu
-      ;;
-    "󰋊 Disk infos")
-      disk_menu
-      ;;
-    " Settings (manual edit)")
-      SETTINGS_FILE="/etc/nixos/settings.nix"
-      SETTINGS_LAST_MOD=$(stat -c %Y $SETTINGS_FILE)
-      sudo "$EDITOR" $SETTINGS_FILE
-      if [[ $(stat -c %Y $SETTINGS_FILE) -gt $SETTINGS_LAST_MOD ]]; then
-        # Settings have changed, updating system.
-        sudo whoami 1>/dev/null # Force prompt for sudo password now
-        gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --cores 0 --max-jobs auto
-        nix_generations
-        echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
-        reboot_check
-      fi
-      system_menu
-      ;;
-    " Firmware")
-      gum spin --spinner globe --title "Refreshing firmware metadata..." --show-error -- fwupdmgr refresh --force
-      DEVICES_UPDATE=$(fwupdmgr --json get-updates)
-      if [[ $(echo "$DEVICES_UPDATE" | jq -r '.Devices | length') -ge 1 ]]; then
-        echo -e "The following devices can be upgraded:"
-        echo ""
-        echo "$DEVICES_UPDATE" | jq -c '.Devices.[]' | while read -r item; do
-          DeviceName=$(echo "$item" | jq -r '.Name')
-          DeviceSummary=$(echo "$item" | jq -r '.Summary')
-          DeviceVendor=$(echo "$item" | jq -r '.Vendor')
-          #DeviceID=$(echo "$item" | jq -r '.DeviceId')
-          echo -e "- ${GREEN}$DeviceName${NC} (${BLUE}$DeviceVendor${NC}) [$DeviceSummary]"
-        done
-        echo ""
-        #gum confirm "Would you like to update all devices now ?" && sudo whoami 1>/dev/null && gum spin --spinner dot --title "Updating firmware..." --show-error -- sudo fwupdmgr update
-        gum confirm "Would you like to update all devices now ?" && sudo fwupdmgr update
-      else
-        echo -e "${GREEN}Nothing to update.${NC}"
-      fi
-      system_menu
-      ;;
-    " Info")
-      fastfetch
-      system_menu
-      ;;
-    " Back")
-      main_menu
-      ;;
+  " Shutdown")
+    #sudo shutdown -P now
+    cosmic-osd shutdown
+    exit 0
+    ;;
+  " Reboot")
+    #sudo reboot now
+    cosmic-osd restart
+    exit 0
+    ;;
+  " Lock session")
+    loginctl lock-session
+    ;;
+  "󱃶 Process Management")
+    btop
+    system_menu
+    ;;
+  "󰋊 Disk infos")
+    disk_menu
+    ;;
+  " Settings (manual edit)")
+    SETTINGS_FILE="/etc/nixos/settings.nix"
+    SETTINGS_LAST_MOD=$(stat -c %Y $SETTINGS_FILE)
+    sudo "$EDITOR" $SETTINGS_FILE
+    if [[ $(stat -c %Y $SETTINGS_FILE) -gt $SETTINGS_LAST_MOD ]]; then
+      # Settings have changed, updating system.
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
+      gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --cores 0 --max-jobs auto
+      nix_generations
+      echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
+      reboot_check
+    fi
+    system_menu
+    ;;
+  " Firmware")
+    gum spin --spinner globe --title "Refreshing firmware metadata..." --show-error -- fwupdmgr refresh --force
+    DEVICES_UPDATE=$(fwupdmgr --json get-updates)
+    if [[ $(echo "$DEVICES_UPDATE" | jq -r '.Devices | length') -ge 1 ]]; then
+      echo -e "The following devices can be upgraded:"
+      echo ""
+      echo "$DEVICES_UPDATE" | jq -c '.Devices.[]' | while read -r item; do
+        DeviceName=$(echo "$item" | jq -r '.Name')
+        DeviceSummary=$(echo "$item" | jq -r '.Summary')
+        DeviceVendor=$(echo "$item" | jq -r '.Vendor')
+        #DeviceID=$(echo "$item" | jq -r '.DeviceId')
+        echo -e "- ${GREEN}$DeviceName${NC} (${BLUE}$DeviceVendor${NC}) [$DeviceSummary]"
+      done
+      echo ""
+      #gum confirm "Would you like to update all devices now ?" && sudo whoami 1>/dev/null && gum spin --spinner dot --title "Updating firmware..." --show-error -- sudo fwupdmgr update
+      gum confirm "Would you like to update all devices now ?" && sudo fwupdmgr update
+    else
+      echo -e "${GREEN}Nothing to update.${NC}"
+    fi
+    system_menu
+    ;;
+  " Info")
+    fastfetch
+    system_menu
+    ;;
+  " Back")
+    main_menu
+    ;;
   esac
 }
 
@@ -297,66 +297,66 @@ main_menu() {
   MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Apps" " Update" " Upgrade" " System" "? Help" " About" "󰈆 Exit")
   #echo "Your choice is: $MAIN_MENU"
   case $MAIN_MENU in
-    "󰀻 Apps")
-      app_menu
-      ;;
-    " Update")
-      sudo whoami 1>/dev/null # Force prompt for sudo password now
-      gum spin --spinner dot --title "Deleting oldest generations..." --show-error -- sudo nix-collect-garbage --delete-older-than 7d
-      gum spin --spinner dot --title "Upgrading packages..." --show-error -- sudo nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
-      gum spin --spinner dot --title "Running store garbage collector..." --show-error -- sudo nix-store --gc
-      # Check if a reboot is necessary
-      nix_generations
-      echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
-      reboot_check
-      ;;
-    " Upgrade")
-      DOTFILES_VERSION=$(curios-dotfiles --version)
-      HOME_DIR="/home/*/"
-      SKEL_DIR="/etc/skel/"
-      CURRENT_KEYBOARD=$(grep -oP 'keyboard\s*=\s*"\K[^"]+' /etc/nixos/settings.nix)
-      sudo curios-update --upgrade
-      status=$?
-      # Updating dotfiles
-      if [[ $(curios-dotfiles --version) != "$DOTFILES_VERSION" ]]; then
-        # curios-dotfiles has been updated. We re-launch it.
-        echo -e "${GREEN}Updating CuriOS dotfiles...${NC}"
-        for DIR in $HOME_DIR; do
-          if [[ -d "$DIR" && "$DIR" != */lost+found/ ]]; then
-            # TODO: execute curios-dotfiles has owner of HOME_DIR
-            curios-dotfiles --lang "$CURRENT_KEYBOARD" "$DIR"
-            #chown -R 1000:100 "$DIR" # Any way to predict OWNER at this stage ?
-          fi
-        done
-        sudo mkdir -p "$SKEL_DIR"
-        sudo curios-dotfiles --lang "$CURRENT_KEYBOARD" "$SKEL_DIR"
-      fi
-      # Check if a reboot is necessary
-      #nix_generations
-      #reboot_check
-      if [ $status -eq 2 ]; then
-        echo -e "A new CuriOS system was installed - ${YELLOW}You should REBOOT now${NC}."
-        echo -e "${BLUE}Please${NC} ensure that all other applications are properly closed."
-        gum confirm "Reboot now:" && sudo reboot now
-      fi
-      ;;
-    " System")
-      system_menu
-      ;;
-    "? Help")
-      help_menu
-      ;;
-    " About")
-      nix_generations
-      echo -e "${VARIANT} ${GREY}(${VARIANT_ID})${NC} - based on ${PRETTY_NAME}"
-      echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
-      echo -e "CuriOS manager version: $SCRIPT_VERSION"
-      echo -e "Visit ${BLUE}${CURIOS_SRC_URL}${NC}"
-      ;;
-    "󰈆 Exit")
-      echo -e "${GREEN}Program exited...${NC}"
-      exit 0
-      ;;
+  "󰀻 Apps")
+    app_menu
+    ;;
+  " Update")
+    sudo whoami 1>/dev/null # Force prompt for sudo password now
+    gum spin --spinner dot --title "Deleting oldest generations..." --show-error -- sudo nix-collect-garbage --delete-older-than 7d
+    gum spin --spinner dot --title "Upgrading packages..." --show-error -- sudo nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+    gum spin --spinner dot --title "Running store garbage collector..." --show-error -- sudo nix-store --gc
+    # Check if a reboot is necessary
+    nix_generations
+    echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
+    reboot_check
+    ;;
+  " Upgrade")
+    DOTFILES_VERSION=$(curios-dotfiles --version)
+    HOME_DIR="/home/*/"
+    SKEL_DIR="/etc/skel/"
+    CURRENT_KEYBOARD=$(grep -oP 'keyboard\s*=\s*"\K[^"]+' /etc/nixos/settings.nix)
+    sudo curios-update --upgrade
+    status=$?
+    # Updating dotfiles
+    if [[ $(curios-dotfiles --version) != "$DOTFILES_VERSION" ]]; then
+      # curios-dotfiles has been updated. We re-launch it.
+      echo -e "${GREEN}Updating CuriOS dotfiles...${NC}"
+      for DIR in $HOME_DIR; do
+        if [[ -d "$DIR" && "$DIR" != */lost+found/ ]]; then
+          # TODO: execute curios-dotfiles has owner of HOME_DIR
+          curios-dotfiles --lang "$CURRENT_KEYBOARD" "$DIR"
+          #chown -R 1000:100 "$DIR" # Any way to predict OWNER at this stage ?
+        fi
+      done
+      sudo mkdir -p "$SKEL_DIR"
+      sudo curios-dotfiles --lang "$CURRENT_KEYBOARD" "$SKEL_DIR"
+    fi
+    # Check if a reboot is necessary
+    #nix_generations
+    #reboot_check
+    if [ $status -eq 2 ]; then
+      echo -e "A new CuriOS system was installed - ${YELLOW}You should REBOOT now${NC}."
+      echo -e "${BLUE}Please${NC} ensure that all other applications are properly closed."
+      gum confirm "Reboot now:" && sudo reboot now
+    fi
+    ;;
+  " System")
+    system_menu
+    ;;
+  "? Help")
+    help_menu
+    ;;
+  " About")
+    nix_generations
+    echo -e "${VARIANT} ${GREY}(${VARIANT_ID})${NC} - based on ${PRETTY_NAME}"
+    echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
+    echo -e "CuriOS manager version: $SCRIPT_VERSION"
+    echo -e "Visit ${BLUE}${CURIOS_SRC_URL}${NC}"
+    ;;
+  "󰈆 Exit")
+    echo -e "${GREEN}Program exited...${NC}"
+    exit 0
+    ;;
   esac
   main_menu # self loop
 }
@@ -368,7 +368,7 @@ start() {
     tte -i /etc/nixos/logo.txt --anchor-text c --canvas-width 0 sweep --final-gradient-stops 12488B 2AA1B3 --final-gradient-steps 12 12 --final-gradient-direction diagonal
     #echo -e "${BLUE}CuriOS${NC}"
   else
-    echo -e "${RED}/etc/nixos/logo.txt file is missing!${NC}";
+    echo -e "${RED}/etc/nixos/logo.txt file is missing!${NC}"
   fi
   warning_print
   main_menu
