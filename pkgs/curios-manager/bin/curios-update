@@ -20,15 +20,16 @@
 set -eu
 
 #------------- Colors -------------#
-readonly RED="\033[31;1m"   # Red and bold
-readonly GREEN="\033[32;1m" # Green and bold
-#readonly BLUE="\033[34;1m"         # Blue and bold
+readonly RED="\033[31;1m"      # Red and bold
+readonly GREEN="\033[32;1m"    # Green and bold
+readonly BLUE="\033[34;1m"     # Blue and bold
 readonly GREY="\033[37;1m"     # Grey and bold
 readonly YELLOW="\033[33;1;3m" # Yellow, bold and italic
-#readonly YELLOWBLK="\033[33;1;5m"  # Yellow, bold and slow blink
-#readonly UNDL="\033[4m"            # Underlined
-#readonly BOLD="\033[1m"            # Bold
-readonly NC="\033[0m" # No Color
+readonly NC="\033[0m"          # No Color
+
+#------------- Trap for cleanup
+TMP_DIR=$(mktemp -d -t curios-update-XXXXXX)
+trap 'rm -rf -- "$TMP_DIR"' EXIT
 
 #------------- Print help function
 usage() {
@@ -51,7 +52,7 @@ ${GREY}EXAMPLES:${NC}
 }
 
 #------------- var init state
-readonly SCRIPT_VERSION="0.11"
+readonly SCRIPT_VERSION="0.12"
 VERBOSE=0
 CHECK_ONLINE=0
 UPGRADE_SYSTEM=0
@@ -134,24 +135,34 @@ if ! available tar; then
   echo -e "${RED}tar command not found!${NC}"
   exit 1
 fi
+if ! available find; then
+  echo -e "${RED}find command not found!${NC}"
+  exit 1
+fi
 
 # check online latest version
 get_latest_version() {
   if [ $VERBOSE -eq 1 ]; then
     echo "Checking github sources..."
   fi
-  LATEST_VERSION="$(curl -f -L --silent "https://api.github.com/repos/CuriosLabs/CuriOS/tags" | jq -r '.[0].name')"
-  LATEST_SOURCE="$(curl -f -L --silent "https://api.github.com/repos/CuriosLabs/CuriOS/tags" | jq -r '.[0].tarball_url')"
+  local LATEST_INFO
+  LATEST_INFO=$(curl -f -L --silent "https://api.github.com/repos/CuriosLabs/CuriOS/tags" | jq -r '.[0]')
+  LATEST_VERSION=$(echo "$LATEST_INFO" | jq -r '.name')
+  LATEST_SOURCE=$(echo "$LATEST_INFO" | jq -r '.tarball_url')
 }
 
 # Upgrade the system
 upgrade_curios() {
   local extracted_source_path=""
 
+  #echo -e "${YELLOW}WARNING: This upgrade process does not verify the integrity of the downloaded source code.${NC}"
+  #echo -e "${YELLOW}This is a security risk if the source repository is compromised.${NC}"
+  #gum confirm "Continue with the upgrade?" || exit 0
+
   echo -e "${GREEN}Downloading ${LATEST_VERSION} sources...${NC}"
-  wget -O /tmp/CuriOS-"${LATEST_VERSION}".tar.gz --show-progress "$LATEST_SOURCE"
-  mkdir -p /tmp/CuriOS-"${LATEST_VERSION}"/ && tar -C /tmp/CuriOS-"${LATEST_VERSION}"/ -xzf /tmp/CuriOS-"${LATEST_VERSION}".tar.gz
-  extracted_source_path=$(fd --min-depth 1 --max-depth 1 --type d . /tmp/CuriOS-"${LATEST_VERSION}"/ | head -n 1)
+  wget -O "${TMP_DIR}/CuriOS-${LATEST_VERSION}".tar.gz --show-progress "$LATEST_SOURCE"
+  mkdir -p "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ && tar -C "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ -xzf "${TMP_DIR}/CuriOS-${LATEST_VERSION}".tar.gz
+  extracted_source_path=$(find "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ --min-depth 1 --max-depth 1 --type d | head -n 1)
   echo "Sources extracted to ${extracted_source_path}"
   # Checking extracted source
   if [ ! -f "$extracted_source_path"/configuration.nix ]; then
@@ -191,7 +202,6 @@ upgrade_curios() {
   echo -e "${YELLOW}Updating packages...${NC}"
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
   echo -e "${GREEN}Done.${NC}"
-  #cryptsetup config /dev/nvme0n1p2 --label "curiosystem"
 }
 
 # Get current OS version
@@ -200,7 +210,6 @@ if [ ! -f /etc/os-release ]; then
   exit 1
 fi
 source /etc/os-release
-#VARIANT_ID="unstable"
 echo -e "CuriOS current version is ${GREY}${VARIANT_ID}${NC}"
 
 if [ $CHECK_ONLINE -eq 1 ]; then
@@ -227,3 +236,4 @@ if [ $UPGRADABLE -eq 1 ] && [ $UPGRADE_SYSTEM -eq 1 ]; then
   upgrade_curios
   exit 2
 fi
+
