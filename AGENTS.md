@@ -44,7 +44,7 @@ The project follows a modular architecture. The main directories are:
   ```
 - **Lint Shell Scripts**: Bash shell scripts must be checked with `shellcheck`:
   ```bash
-  shellcheck --color=always -f tty -x pkgs/curios-manager/bin/curios-manager
+  shellcheck --color=always -f tty -x -P pkgs/curios-manager/bin -P pkgs/curios-manager/bin/functions pkgs/curios-manager/bin/curios-*
   ```
 - **Supported Version**: NixOS 25.11 or later.
 - **Bash script test:** The binaries could be tested from a nix-shell with 

@@ -5,7 +5,7 @@
 #
 # Dependencies: gum, tte, curios-update, curios-dotfiles
 
-__dir="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
+__dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #------------- Source files
 source "${__dir}/constants.sh"
 source "${__dir}/functions/app_menu.sh"
