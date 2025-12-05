@@ -18,6 +18,7 @@ The project follows a modular architecture. The main directories are:
 
 - `pkgs/curios-manager/`: The Nix custom package main directory.
 - `pkgs/curios-manager/bin/`: The bash shell scripts subdirectory.
+- `pkgs/curios-manager/bin/functions/`: The `curios-manager` TUI bash functions directory.
 
 ## Key Files
 
@@ -46,9 +47,18 @@ The project follows a modular architecture. The main directories are:
   shellcheck --color=always -f tty -x pkgs/curios-manager/bin/curios-manager
   ```
 - **Supported Version**: NixOS 25.11 or later.
+- **Bash script test:** The binaries could be tested from a nix-shell with 
+  libnotify and gum packages:
+  ```bash
+  nix-shell -p libnotify gum
+  ```
 - **Test Custom Packages**: Test Nix package with:
   ```bash
   nix-build && nix-env -i -f default.nix
+  ```
+- **Analyze**: Get latest code changes from git:
+  ```bash
+  git log
   ```
 
 ## Contributing
