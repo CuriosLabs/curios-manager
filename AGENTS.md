@@ -51,6 +51,11 @@ The project follows a modular architecture. The main directories are:
   pkgs/curios-manager/bin/curios-*
   ```
 
+  ```bash
+  shellcheck --color=always -f tty -x -P pkgs/curios-manager/bin \
+  pkgs/curios-manager/bin/functions/*.sh
+  ```
+
 - **Supported Version**: NixOS 25.11 or later.
 - **Bash script test:** The binaries could be tested from a nix-shell with
   `libnotify` and gum packages:
