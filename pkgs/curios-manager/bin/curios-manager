@@ -9,6 +9,7 @@ __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #------------- Source files
 source "${__dir}/constants.sh"
 source "${__dir}/functions/app_menu.sh"
+source "${__dir}/functions/backup_menu.sh"
 source "${__dir}/functions/disk_menu.sh"
 source "${__dir}/functions/help_menu.sh"
 source "${__dir}/functions/system_menu.sh"
@@ -97,6 +98,9 @@ if [ ! -f /etc/os-release ]; then
   exit 1
 fi
 source /etc/os-release
+if [ -f $HOME/.env ]; then
+  source $HOME/.env
+fi
 
 nix_generations() {
   LIST_GEN=$(gum spin --spinner dot --title "Retrieving NixOS information..." -- nixos-rebuild list-generations --json)

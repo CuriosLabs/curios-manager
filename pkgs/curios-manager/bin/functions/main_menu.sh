@@ -8,7 +8,7 @@ main_menu() {
   local DOTFILES_VERSION
   local HOME_DIR
   local SKEL_DIR
-  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Apps" " Update" " Upgrade" " System" "? Help" " About" "󰈆 Exit")
+  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Apps" " Update" " Upgrade" "󱘸 Backup" " System" "? Help" " About" "󰈆 Exit")
   #echo "Your choice is: $MAIN_MENU"
   case $MAIN_MENU in
   "󰀻 Apps")
@@ -52,6 +52,9 @@ main_menu() {
       echo -e "${BLUE}Please${NC} ensure that all other applications are properly closed."
       gum confirm "Reboot now:" && sudo reboot now
     fi
+    ;;
+  "󱘸 Backup")
+    backup_menu
     ;;
   " System")
     system_menu
