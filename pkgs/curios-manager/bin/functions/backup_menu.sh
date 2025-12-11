@@ -46,12 +46,25 @@ backup_setup() {
   if var_exists RESTIC_REPOSITORY; then
     echo -e "${BLUE}Backup repository already set to:${NC} ${RESTIC_REPOSITORY}"
   else
-    echo -e "${YELLOW}No backup repos found.${NC}"
+    #echo -e "${YELLOW}No backup repository found.${NC}"
     BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" " S3 server (Amazon or MinIO)" " Back")
     case $BACKUP_SETUP_MENU in
     " Local (USB)")
+      # List USB drive mounted
       usb_drives=$(fd --type d --max-depth 1 "" /run/media/"$USER"/)
+      # Check if any was found
+      if [ -z "$usb_drives" ]; then
+        echo -e "${RED}No USB drive found in${NC} /run/media/"$USER"/"
+        echo -e "Make sure that a USB drive is plugged and mounted."
+        return 1
+      fi
+      # Let user choose a USB drive
       usb_choosen_drive=$(echo "$usb_drives" | gum choose --header "Select a USB drive:")
+      if [ -z "$usb_choosen_drive" ]; then
+        echo -e "${YELLOW}No USB drive selected.${NC}"
+        return 1
+      fi
+      # Save user choice
       RESTIC_REPOSITORY="${usb_choosen_drive}$(hostname)-${USER}"
       mkdir -p "$RESTIC_REPOSITORY"
       export RESTIC_REPOSITORY
