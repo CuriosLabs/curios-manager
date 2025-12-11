@@ -98,8 +98,8 @@ if [ ! -f /etc/os-release ]; then
   exit 1
 fi
 source /etc/os-release
-if [ -f $HOME/.env ]; then
-  source $HOME/.env
+if [ -f "$HOME"/.env ]; then
+  source "$HOME"/.env
 fi
 
 nix_generations() {

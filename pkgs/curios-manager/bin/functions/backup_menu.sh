@@ -38,16 +38,25 @@ save_env_var() {
 
 #------------- Setup functions
 backup_setup() {
-  local choosen_repo_type
+  #local choosen_repo_type
+  local usb_drives
+  local usb_choosen_drive
   local BACKUP_SETUP_MENU
+
   if var_exists RESTIC_REPOSITORY; then
-    echo -e "${BLUE}Backup repository found...${NC}"
+    echo -e "${BLUE}Backup repository already set to:${NC} ${RESTIC_REPOSITORY}"
   else
     echo -e "${YELLOW}No backup repos found.${NC}"
     BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" " S3 server (Amazon or MinIO)" " Back")
     case $BACKUP_SETUP_MENU in
     " Local (USB)")
-      echo ""
+      usb_drives=$(fd --type d --max-depth 1 "" /run/media/"$USER"/)
+      usb_choosen_drive=$(echo "$usb_drives" | gum choose --header "Select a USB drive:")
+      RESTIC_REPOSITORY="${usb_choosen_drive}$(hostname)-${USER}"
+      mkdir -p "$RESTIC_REPOSITORY"
+      export RESTIC_REPOSITORY
+      save_env_var RESTIC_REPOSITORY
+      echo "Choosen drive: ${RESTIC_REPOSITORY}"
       ;;
     " S3 server (Amazon or MinIO)")
       echo "TBD"
@@ -63,9 +72,18 @@ backup_setup() {
 #------------- Backup menu
 backup_menu() {
   local BACKUP_MENU
+
+  if ! available restic; then
+    echo -e "${RED}restic command not found!${NC}"
+    main_menu
+  fi
+
   BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Sync now" "󱘪 Restore" "󱙌 Setup" " Back")
   case $BACKUP_MENU in
   "󱘸 Sync now")
+    if var_exists RESTIC_REPOSITORY; then
+      echo "Current repo: ${RESTIC_REPOSITORY}"
+    fi
     echo "TBD"
     backup_menu
     ;;
