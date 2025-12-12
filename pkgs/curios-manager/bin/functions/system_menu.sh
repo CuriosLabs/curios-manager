@@ -8,13 +8,13 @@ system_menu() {
   SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󰋊 Disk infos" " Settings (manual edit)" " Firmware" " Info" " Back")
   case $SYSTEM_MENU in
   " Shutdown")
-    #sudo shutdown -P now
-    cosmic-osd shutdown
+    #cosmic-osd shutdown
+    systemctl poweroff
     exit 0
     ;;
   " Reboot")
-    #sudo reboot now
-    cosmic-osd restart
+    #cosmic-osd restart
+    systemctl reboot
     exit 0
     ;;
   " Lock session")
