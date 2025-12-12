@@ -33,7 +33,24 @@ save_env_var() {
     echo "$var_name=\"$var_value\"" >>"$env_file"
   fi
 
-  echo -e "${GREEN}Variable '$var_name' saved to $env_file.${NC}"
+  #echo -e "${GREEN}Variable '$var_name' saved to $env_file.${NC}"
+  echo -e "${GREEN}Setting saved.${NC}"
+}
+
+backup_set_password() {
+  local repo_passwd
+
+  echo -e "${BLUE}Setting a backup password${NC}"
+  echo -e "Please note that knowledge of your password is required to access\nthe repository. Losing your password means that your data is\n${RED}irrecoverably lost!${NC}"
+  repo_passwd=$(gum input --password --char-limit=50 --placeholder="Enter password...")
+  if [ -z "$repo_passwd" ]; then
+    echo -e "${RED}You must set a password.${NC}"
+    return 1
+  fi
+  # TODO: ask for password confirmation
+  # TODO: save RESTIC_PASSWORD in a secret vault
+  RESTIC_PASSWORD="$repo_passwd"
+  export RESTIC_PASSWORD
 }
 
 #------------- Setup functions
@@ -44,67 +61,109 @@ backup_setup() {
   local BACKUP_SETUP_MENU
 
   if var_exists RESTIC_REPOSITORY; then
-    echo -e "${BLUE}Backup repository already set to:${NC} ${RESTIC_REPOSITORY}"
-  else
-    #echo -e "${YELLOW}No backup repository found.${NC}"
-    BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" " S3 server (Amazon or MinIO)" " Back")
-    case $BACKUP_SETUP_MENU in
-    " Local (USB)")
-      # List USB drive mounted
-      usb_drives=$(fd --type d --max-depth 1 "" /run/media/"$USER"/)
-      # Check if any was found
-      if [ -z "$usb_drives" ]; then
-        echo -e "${RED}No USB drive found in${NC} /run/media/"$USER"/"
-        echo -e "Make sure that a USB drive is plugged and mounted."
-        return 1
-      fi
-      # Let user choose a USB drive
-      usb_choosen_drive=$(echo "$usb_drives" | gum choose --header "Select a USB drive:")
-      if [ -z "$usb_choosen_drive" ]; then
-        echo -e "${YELLOW}No USB drive selected.${NC}"
-        return 1
-      fi
-      # Save user choice
-      RESTIC_REPOSITORY="${usb_choosen_drive}$(hostname)-${USER}"
-      mkdir -p "$RESTIC_REPOSITORY"
-      export RESTIC_REPOSITORY
-      save_env_var RESTIC_REPOSITORY
-      echo "Choosen drive: ${RESTIC_REPOSITORY}"
-      ;;
-    " S3 server (Amazon or MinIO)")
-      echo "TBD"
-      backup_setup
-      ;;
-    " Back")
-      backup_menu
-      ;;
-    esac
+    echo -e "${YELLOW}WARNING!${NC} ${BLUE}A backup repository already exist:${NC} ${RESTIC_REPOSITORY}"
+    gum confirm "Do you want to replace it?" --default=false || backup_menu
   fi
+  #echo -e "${YELLOW}No backup repository found.${NC}"
+  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" " S3 server (Amazon or MinIO)" " Back")
+  case $BACKUP_SETUP_MENU in
+  " Local (USB)")
+    # List USB drive mounted
+    if [ ! -d /run/media/"$USER" ]; then
+      echo -e "${RED}No media file mounted.${NC}"
+      return 1
+    fi
+    # TODO: automount USB drive check for /dev/sdX and udiskctl them
+    usb_drives=$(fd --type d --max-depth 1 "" /run/media/"$USER"/)
+    # Check if any was found
+    if [ -z "$usb_drives" ]; then
+      echo -e "${RED}No USB drive found in${NC} /run/media/$USER/"
+      echo -e "Make sure that a USB drive is plugged and mounted."
+      return 1
+    fi
+    # Let user choose a USB drive
+    usb_choosen_drive=$(echo "$usb_drives" | gum choose --header "Select a USB drive:")
+    if [ -z "$usb_choosen_drive" ]; then
+      echo -e "${YELLOW}No USB drive selected.${NC}"
+      return 1
+    fi
+    # Make repo directory
+    RESTIC_REPOSITORY="${usb_choosen_drive}$(hostname)-${USER}"
+    mkdir -p "$RESTIC_REPOSITORY"
+    # ask user for repo password
+    backup_set_password
+    # Save user choices
+    export RESTIC_REPOSITORY
+    if gum spin --spinner dot --title "Initializing backup..." --show-error -- restic init; then
+      save_env_var RESTIC_REPOSITORY
+      echo -e "${BLUE}Backup repository set to:${NC} ${RESTIC_REPOSITORY}"
+      save_env_var RESTIC_PASSWORD
+    else
+      unset RESTIC_REPOSITORY
+      unset RESTIC_PASSWORD
+    fi
+    backup_menu
+    ;;
+  " S3 server (Amazon or MinIO)")
+    echo "TBD"
+    backup_setup
+    ;;
+  " Back")
+    backup_menu
+    ;;
+  esac
 }
 
 #------------- Backup menu
 backup_menu() {
   local BACKUP_MENU
+  local backup_exclude_file="$HOME/.config/backup/excludes.txt"
 
   if ! available restic; then
     echo -e "${RED}restic command not found!${NC}"
     main_menu
   fi
 
-  BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Sync now" "󱘪 Restore" "󱙌 Setup" " Back")
+  # Source env default file
+  if [ -f "$HOME/.env" ]; then
+    source "$HOME/.env"
+  fi
+
+  if [ ! -f "$backup_exclude_file" ]; then
+    # TODO: exclude ~/.local/state/nix/profiles/ ~/.npm/_cacache/ ??
+    echo -e "Creating default backup exclude files..."
+    dir=$(dirname "$backup_exclude_file")
+    mkdir -p "$dir"
+    touch "$backup_exclude_file"
+    echo "# Exclude common cache folders" >>"$backup_exclude_file"
+    echo "$HOME/.cache" >>"$backup_exclude_file"
+    echo "cache" >>"$backup_exclude_file"
+    echo "Cache" >>"$backup_exclude_file"
+    echo "GPUCache" >>"$backup_exclude_file"
+    echo "*_cache" >>"$backup_exclude_file"
+    echo "# Exclude trash folder" >>"$backup_exclude_file"
+    echo "$HOME/.local/share/Trash" >>"$backup_exclude_file"
+    echo "# exclude iso files" >>"$backup_exclude_file"
+    echo "*.iso" >>"$backup_exclude_file"
+    echo "# Add custom folders or files to exclude here" >>"$backup_exclude_file"
+  fi
+
+  BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Sync now" "󱘪 Restore from backup" "󱙌 Setup new backup" " Back")
   case $BACKUP_MENU in
   "󱘸 Sync now")
-    if var_exists RESTIC_REPOSITORY; then
-      echo "Current repo: ${RESTIC_REPOSITORY}"
+    if [[ ! -v RESTIC_REPOSITORY || ! -v RESTIC_PASSWORD ]]; then
+      echo -e "${YELLOW}Backup parameters missing!${NC} Use Setup menu."
+      backup_menu
     fi
-    echo "TBD"
+    #if gum spin --spinner dot --title "Syncing backup..." --show-error --
+    restic backup --skip-if-unchanged -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
     backup_menu
     ;;
-  "󱘪 Restore")
-    echo "TBD"
+  "󱘪 Restore from backup")
+    restic snapshots --group-by host -r "$RESTIC_REPOSITORY"
     backup_menu
     ;;
-  "󱙌 Setup")
+  "󱙌 Setup new backup")
     backup_setup
     ;;
   " Back")
