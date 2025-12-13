@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
 
 #------------- various functions
-var_exists() {
-  if [[ -v "$1" ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
 save_env_var() {
   local var_name="$1"
   # Indirect expansion to get the value of the variable
@@ -39,18 +31,23 @@ save_env_var() {
 
 backup_set_password() {
   local repo_passwd
+  local repo_passwd_confirm
 
-  echo -e "${BLUE}Setting a backup password${NC}"
-  echo -e "Please note that knowledge of your password is required to access\nthe repository. Losing your password means that your data is\n${RED}irrecoverably lost!${NC}"
+  echo -e "${BLUE}Setting a backup password${NC} - 6 characters length minimum."
+  #echo -e "Please note that knowledge of your password is required to access\nthe repository. Losing your password means that your data is\n${RED}irrecoverably lost!${NC}"
   repo_passwd=$(gum input --password --char-limit=50 --placeholder="Enter password...")
-  if [ -z "$repo_passwd" ]; then
-    echo -e "${RED}You must set a password.${NC}"
+  repo_passwd_confirm=$(gum input --password --char-limit=50 --placeholder="Confirm password...")
+  if [ "${#repo_passwd}" -le 5 ]; then
+    echo -e "${RED}Password is too short!${NC} It must be at least 6 characters long."
+    return 1
+  elif [[ "$repo_passwd" != "$repo_passwd_confirm" ]]; then
+    echo -e "${RED}Password mismatch!${NC}"
     return 1
   fi
-  # TODO: ask for password confirmation
-  # TODO: save RESTIC_PASSWORD in a secret vault
-  RESTIC_PASSWORD="$repo_passwd"
-  export RESTIC_PASSWORD
+  gum confirm --affirmative="I understand" --negative="Cancel" \
+    $'Please note that knowledge of your password is required to access the backup repository.\nLosing your password means that your data is irrecoverably lost!' || return 1
+  printf "$repo_passwd" | secret-tool store --label="Backup password" restic password
+  export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
 }
 
 #------------- Setup functions
@@ -60,11 +57,15 @@ backup_setup() {
   local usb_choosen_drive
   local BACKUP_SETUP_MENU
 
-  if var_exists RESTIC_REPOSITORY; then
+  if [[ -v RESTIC_REPOSITORY ]]; then
     echo -e "${YELLOW}WARNING!${NC} ${BLUE}A backup repository already exist:${NC} ${RESTIC_REPOSITORY}"
     gum confirm "Do you want to replace it?" --default=false || backup_menu
   fi
-  #echo -e "${YELLOW}No backup repository found.${NC}"
+
+  if [[ ! -v RESTIC_PASSWORD_COMMAND ]]; then
+    export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
+  fi
+
   BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" " S3 server (Amazon or MinIO)" " Back")
   case $BACKUP_SETUP_MENU in
   " Local (USB)")
@@ -74,6 +75,7 @@ backup_setup() {
       return 1
     fi
     # TODO: automount USB drive check for /dev/sdX and udiskctl them
+    # TODO: format drive if not in a compatible filesystem.
     usb_drives=$(fd --type d --max-depth 1 "" /run/media/"$USER"/)
     # Check if any was found
     if [ -z "$usb_drives" ]; then
@@ -81,26 +83,27 @@ backup_setup() {
       echo -e "Make sure that a USB drive is plugged and mounted."
       return 1
     fi
+    # TODO: Show USB drive total space in Go.
     # Let user choose a USB drive
     usb_choosen_drive=$(echo "$usb_drives" | gum choose --header "Select a USB drive:")
     if [ -z "$usb_choosen_drive" ]; then
       echo -e "${YELLOW}No USB drive selected.${NC}"
       return 1
     fi
+    # ask user for repo password
+    if ! backup_set_password; then
+      echo -e "${RED}Password not saved.${NC}"
+      return 1
+    fi
     # Make repo directory
     RESTIC_REPOSITORY="${usb_choosen_drive}$(hostname)-${USER}"
     mkdir -p "$RESTIC_REPOSITORY"
-    # ask user for repo password
-    backup_set_password
-    # Save user choices
     export RESTIC_REPOSITORY
     if gum spin --spinner dot --title "Initializing backup..." --show-error -- restic init; then
       save_env_var RESTIC_REPOSITORY
       echo -e "${BLUE}Backup repository set to:${NC} ${RESTIC_REPOSITORY}"
-      save_env_var RESTIC_PASSWORD
     else
       unset RESTIC_REPOSITORY
-      unset RESTIC_PASSWORD
     fi
     backup_menu
     ;;
@@ -124,9 +127,18 @@ backup_menu() {
     main_menu
   fi
 
+  if ! available secret-tool; then
+    echo -e "${RED}secret-tool command not found!${NC}"
+    main_menu
+  fi
+
   # Source env default file
   if [ -f "$HOME/.env" ]; then
     source "$HOME/.env"
+  fi
+
+  if [[ ! -v RESTIC_PASSWORD_COMMAND ]]; then
+    export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
   fi
 
   if [ ! -f "$backup_exclude_file" ]; then
@@ -151,12 +163,14 @@ backup_menu() {
   BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Sync now" "󱘪 Restore from backup" "󱙌 Setup new backup" " Back")
   case $BACKUP_MENU in
   "󱘸 Sync now")
-    if [[ ! -v RESTIC_REPOSITORY || ! -v RESTIC_PASSWORD ]]; then
+    if [[ ! -v RESTIC_REPOSITORY ]]; then
       echo -e "${YELLOW}Backup parameters missing!${NC} Use Setup menu."
       backup_menu
     fi
     #if gum spin --spinner dot --title "Syncing backup..." --show-error --
     restic backup --skip-if-unchanged -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
+    gum spin --spinner dot --title "Removing old backups..." --show-error -- restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune -r "$RESTIC_REPOSITORY"
+    gum spin --spinner dot --title "Checking repository health..." --show-error -- restic check -r "$RESTIC_REPOSITORY"
     backup_menu
     ;;
   "󱘪 Restore from backup")
