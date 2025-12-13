@@ -15,6 +15,7 @@ save_env_var() {
 
   # Create the file if it doesn't exist
   touch "$env_file"
+  chmod 0600 "$env_file"
 
   # Check if the variable already exists in the file
   if grep -q "^$var_name=" "$env_file"; then
@@ -66,7 +67,7 @@ backup_setup() {
     export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
   fi
 
-  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" " S3 server (Amazon or MinIO)" " Back")
+  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" " S3 server (Amazon or MinIO)" "󱇶 Google Cloud Storage" " Back")
   case $BACKUP_SETUP_MENU in
   " Local (USB)")
     # List USB drive mounted
@@ -83,7 +84,7 @@ backup_setup() {
       echo -e "Make sure that a USB drive is plugged and mounted."
       return 1
     fi
-    # TODO: Show USB drive total space in Go.
+    # TODO: Show USB drive total space in Go. Check if free space is enough.
     # Let user choose a USB drive
     usb_choosen_drive=$(echo "$usb_drives" | gum choose --header "Select a USB drive:")
     if [ -z "$usb_choosen_drive" ]; then
@@ -99,7 +100,7 @@ backup_setup() {
     RESTIC_REPOSITORY="${usb_choosen_drive}$(hostname)-${USER}"
     mkdir -p "$RESTIC_REPOSITORY"
     export RESTIC_REPOSITORY
-    if gum spin --spinner dot --title "Initializing backup..." --show-error -- restic init; then
+    if gum spin --spinner dot --title "Initializing backup repository..." --show-error -- restic init; then
       save_env_var RESTIC_REPOSITORY
       echo -e "${BLUE}Backup repository set to:${NC} ${RESTIC_REPOSITORY}"
     else
@@ -108,6 +109,10 @@ backup_setup() {
     backup_menu
     ;;
   " S3 server (Amazon or MinIO)")
+    echo "TBD"
+    backup_setup
+    ;;
+  "󱇶 Google Cloud Storage")
     echo "TBD"
     backup_setup
     ;;
@@ -141,14 +146,17 @@ backup_menu() {
     export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
   fi
 
+  # TODO: check if the repo is up / plugged ??
+
   if [ ! -f "$backup_exclude_file" ]; then
-    # TODO: exclude ~/.local/state/nix/profiles/ ~/.npm/_cacache/ ??
+    # TODO: exclude ~/.local/state/nix/profiles/ - Steam games folder ??
     echo -e "Creating default backup exclude files..."
     dir=$(dirname "$backup_exclude_file")
     mkdir -p "$dir"
     touch "$backup_exclude_file"
     echo "# Exclude common cache folders" >>"$backup_exclude_file"
     echo "$HOME/.cache" >>"$backup_exclude_file"
+    echo "$HOME/.npm/_cacache" >>"$backup_exclude_file"
     echo "cache" >>"$backup_exclude_file"
     echo "Cache" >>"$backup_exclude_file"
     echo "GPUCache" >>"$backup_exclude_file"
@@ -160,15 +168,15 @@ backup_menu() {
     echo "# Add custom folders or files to exclude here" >>"$backup_exclude_file"
   fi
 
-  BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Sync now" "󱘪 Restore from backup" "󱙌 Setup new backup" " Back")
+  BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Sync now" "󱘪 Restore from backup" "󱙌 Setup new backup" "󱤢 Backup stats" " Back")
   case $BACKUP_MENU in
   "󱘸 Sync now")
     if [[ ! -v RESTIC_REPOSITORY ]]; then
       echo -e "${YELLOW}Backup parameters missing!${NC} Use Setup menu."
       backup_menu
     fi
-    #if gum spin --spinner dot --title "Syncing backup..." --show-error --
-    restic backup --skip-if-unchanged -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
+    # TODO: follow symlinks ??
+    restic backup --skip-if-unchanged --one-file-system -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
     gum spin --spinner dot --title "Removing old backups..." --show-error -- restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune -r "$RESTIC_REPOSITORY"
     gum spin --spinner dot --title "Checking repository health..." --show-error -- restic check -r "$RESTIC_REPOSITORY"
     backup_menu
@@ -179,6 +187,13 @@ backup_menu() {
     ;;
   "󱙌 Setup new backup")
     backup_setup
+    ;;
+  "󱤢 Backup stats")
+    if [[ ! -v RESTIC_REPOSITORY ]]; then
+      echo -e "${YELLOW}Backup parameters missing!${NC} Use Setup menu."
+      backup_menu
+    fi
+    restic stats -r "$RESTIC_REPOSITORY"
     ;;
   " Back")
     main_menu
