@@ -35,6 +35,7 @@ backup_set_password() {
   local repo_passwd_confirm
 
   echo -e "${BLUE}Setting a backup password${NC} - 6 characters length minimum."
+  echo -e "${YELLOW}Use Ctrl+Shift+V to paste.${NC}"
   #echo -e "Please note that knowledge of your password is required to access\nthe repository. Losing your password means that your data is\n${RED}irrecoverably lost!${NC}"
   repo_passwd=$(gum input --password --char-limit=50 --placeholder="Enter password...")
   repo_passwd_confirm=$(gum input --password --char-limit=50 --placeholder="Confirm password...")
@@ -47,7 +48,7 @@ backup_set_password() {
   fi
   gum confirm --affirmative="I understand" --negative="Cancel" \
     $'Please note that knowledge of your password is required to access the backup repository.\nLosing your password means that your data is irrecoverably lost!' || return 1
-  printf "$repo_passwd" | secret-tool store --label="Backup password" restic password
+  printf "%s" "$repo_passwd" | secret-tool store --label="Backup password" restic password
   export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
 }
 
@@ -139,6 +140,7 @@ backup_menu() {
 
   # Source env default file
   if [ -f "$HOME/.env" ]; then
+    # shellcheck source=~/.env
     source "$HOME/.env"
   fi
 
@@ -154,18 +156,20 @@ backup_menu() {
     dir=$(dirname "$backup_exclude_file")
     mkdir -p "$dir"
     touch "$backup_exclude_file"
-    echo "# Exclude common cache folders" >>"$backup_exclude_file"
-    echo "$HOME/.cache" >>"$backup_exclude_file"
-    echo "$HOME/.npm/_cacache" >>"$backup_exclude_file"
-    echo "cache" >>"$backup_exclude_file"
-    echo "Cache" >>"$backup_exclude_file"
-    echo "GPUCache" >>"$backup_exclude_file"
-    echo "*_cache" >>"$backup_exclude_file"
-    echo "# Exclude trash folder" >>"$backup_exclude_file"
-    echo "$HOME/.local/share/Trash" >>"$backup_exclude_file"
-    echo "# exclude iso files" >>"$backup_exclude_file"
-    echo "*.iso" >>"$backup_exclude_file"
-    echo "# Add custom folders or files to exclude here" >>"$backup_exclude_file"
+    {
+      echo "# Exclude common cache folders"
+      echo "$HOME/.cache"
+      echo "$HOME/.npm/_cacache"
+      echo "cache"
+      echo "Cache"
+      echo "GPUCache"
+      echo "*_cache"
+      echo "# Exclude trash folder"
+      echo "$HOME/.local/share/Trash"
+      echo "# exclude iso files"
+      echo "*.iso"
+      echo "# Add custom folders or files to exclude here"
+    } >>"$backup_exclude_file"
   fi
 
   BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Sync now" "󱘪 Restore from backup" "󱙌 Setup new backup" "󱤢 Backup stats" " Back")
