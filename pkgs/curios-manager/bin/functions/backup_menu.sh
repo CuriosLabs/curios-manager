@@ -198,6 +198,8 @@ backup_menu() {
       backup_menu
     fi
     restic stats -r "$RESTIC_REPOSITORY"
+    restic snapshots --group-by host -r "$RESTIC_REPOSITORY"
+    backup_menu
     ;;
   " Back")
     main_menu

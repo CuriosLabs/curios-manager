@@ -110,7 +110,7 @@ reboot_check() {
   if [[ $(uname -r) != "$LIST_GEN_KERNEL" ]]; then
     echo -e "A new kernel was installed - ${YELLOW}You should REBOOT now${NC}."
     echo -e "${BLUE}Please${NC} ensure that all other applications are properly closed."
-    gum confirm "Reboot now:" && sudo reboot now
+    gum confirm "Reboot now:" && systemctl reboot
   fi
 }
 

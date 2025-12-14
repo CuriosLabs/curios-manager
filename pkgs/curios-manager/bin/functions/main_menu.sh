@@ -50,7 +50,7 @@ main_menu() {
     if [ $status -eq 2 ]; then
       echo -e "A new CuriOS system was installed - ${YELLOW}You should REBOOT now${NC}."
       echo -e "${BLUE}Please${NC} ensure that all other applications are properly closed."
-      gum confirm "Reboot now:" && sudo reboot now
+      gum confirm "Reboot now:" && systemctl reboot
     fi
     ;;
   "󱘸 Backup")
