@@ -101,11 +101,19 @@ backup_setup() {
     RESTIC_REPOSITORY="${usb_choosen_drive}$(hostname)-${USER}"
     mkdir -p "$RESTIC_REPOSITORY"
     export RESTIC_REPOSITORY
-    if gum spin --spinner dot --title "Initializing backup repository..." --show-error -- restic init; then
+    if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
+      echo -e "${YELLOW}Repository is already initialized.${NC}"
       save_env_var RESTIC_REPOSITORY
-      echo -e "${BLUE}Backup repository set to:${NC} ${RESTIC_REPOSITORY}"
+      return 0
     else
-      unset RESTIC_REPOSITORY
+      if gum spin --spinner dot --title "Initializing backup repository..." --show-error -- restic init; then
+        save_env_var RESTIC_REPOSITORY
+        echo -e "${BLUE}Backup repository set to:${NC} ${RESTIC_REPOSITORY}"
+        return 0
+      else
+        unset RESTIC_REPOSITORY
+        return 1
+      fi
     fi
     backup_menu
     ;;
@@ -127,6 +135,7 @@ backup_setup() {
 backup_menu() {
   local BACKUP_MENU
   local backup_exclude_file="$HOME/.config/backup/excludes.txt"
+  local SNAPSHOTS_LIST
 
   if ! available restic; then
     echo -e "${RED}restic command not found!${NC}"
@@ -172,7 +181,7 @@ backup_menu() {
     } >>"$backup_exclude_file"
   fi
 
-  BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Sync now" "󱘪 Restore from backup" "󱙌 Setup new backup" "󱤢 Backup stats" " Back")
+  BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Sync now" "󱘪 Restore from backup" "󱙌 Setup your backup" "󱤢 Backup stats" " Back")
   case $BACKUP_MENU in
   "󱘸 Sync now")
     if [[ ! -v RESTIC_REPOSITORY ]]; then
@@ -180,16 +189,25 @@ backup_menu() {
       backup_menu
     fi
     # TODO: follow symlinks ??
-    restic backup --skip-if-unchanged --one-file-system -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
+    gum spin --spinner dot --title "Syncing backup..." --show-error -- restic backup --skip-if-unchanged --one-file-system -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
     gum spin --spinner dot --title "Removing old backups..." --show-error -- restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune -r "$RESTIC_REPOSITORY"
     gum spin --spinner dot --title "Checking repository health..." --show-error -- restic check -r "$RESTIC_REPOSITORY"
     backup_menu
     ;;
   "󱘪 Restore from backup")
-    restic snapshots --group-by host -r "$RESTIC_REPOSITORY"
+    if [[ ! -v RESTIC_REPOSITORY ]]; then
+      echo -e "${YELLOW}Backup parameters missing!${NC} Using Setup menu..."
+      backup_setup
+    fi
+    if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
+      SNAPSHOTS_LIST=$(restic snapshots --json -r "$RESTIC_REPOSITORY")
+      echo "$SNAPSHOTS_LIST"
+    else
+      echo -e "${RED}Backup configuration could not be read.${NC}"
+    fi
     backup_menu
     ;;
-  "󱙌 Setup new backup")
+  "󱙌 Setup your backup")
     backup_setup
     ;;
   "󱤢 Backup stats")
