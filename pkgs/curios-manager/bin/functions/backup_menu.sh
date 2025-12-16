@@ -181,16 +181,16 @@ backup_menu() {
     } >>"$backup_exclude_file"
   fi
 
-  BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Sync now" "󱘪 Restore from backup" "󱙌 Setup your backup" "󱤢 Backup stats" " Back")
+  BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Backup now" "󱘪 Restore from backup" "󱙌 Setup your backup" "󱤢 Backup stats" " Back")
   case $BACKUP_MENU in
-  "󱘸 Sync now")
+  "󱘸 Backup now")
     if [[ ! -v RESTIC_REPOSITORY ]]; then
       echo -e "${YELLOW}Backup parameters missing!${NC} Use Setup menu."
       backup_menu
     fi
     # TODO: follow symlinks ??
-    gum spin --spinner dot --title "Syncing backup..." --show-error -- restic backup --skip-if-unchanged --one-file-system -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
-    gum spin --spinner dot --title "Removing old backups..." --show-error -- restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune -r "$RESTIC_REPOSITORY"
+    gum spin --spinner dot --title "Creating new snapshot..." --show-error -- restic backup --skip-if-unchanged --one-file-system -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
+    gum spin --spinner dot --title "Removing old snapshots..." --show-error -- restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune -r "$RESTIC_REPOSITORY"
     gum spin --spinner dot --title "Checking repository health..." --show-error -- restic check -r "$RESTIC_REPOSITORY"
     backup_menu
     ;;
