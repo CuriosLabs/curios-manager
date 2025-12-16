@@ -201,7 +201,21 @@ backup_menu() {
     fi
     if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
       SNAPSHOTS_LIST=$(restic snapshots --json -r "$RESTIC_REPOSITORY")
-      echo "$SNAPSHOTS_LIST"
+      # Let user choose a snapshot
+      CHOSEN_SNAPSHOT=$(echo "$SNAPSHOTS_LIST" | jq -r '(sort_by(.time) | reverse) | .[] | "\(.short_id)\t\(.time | .[0:16] | gsub("T"; " "))\t\((.summary.total_bytes_processed / (1024*1024*1024) * 100 | round) / 100)GiB\t\(.paths | join(" "))"' | gum choose --header "Choose a snapshot to restore")
+
+      if [ -z "$CHOSEN_SNAPSHOT" ]; then
+        echo -e "${YELLOW}No snapshot selected.${NC}"
+        backup_menu
+      fi
+
+      SNAPSHOT_ID=$(echo "$CHOSEN_SNAPSHOT" | cut -f1)
+
+      if gum confirm "Restore snapshot ${SNAPSHOT_ID} to ${HOME} ?"; then
+        gum spin --spinner dot --title "Restoring..." --show-error -- restic restore "$SNAPSHOT_ID" --target "$HOME" -r "$RESTIC_REPOSITORY"
+      else
+        echo -e "${RED}Restoration canceled.${NC}"
+      fi
     else
       echo -e "${RED}Backup configuration could not be read.${NC}"
     fi
