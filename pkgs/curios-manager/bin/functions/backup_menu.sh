@@ -58,6 +58,9 @@ backup_setup() {
   local usb_drives
   local usb_choosen_drive
   local BACKUP_SETUP_MENU
+  local aws_access_key_id
+  local aws_secret_access_key
+  local s3_bucket_url
 
   if [[ -v RESTIC_REPOSITORY ]]; then
     echo -e "${YELLOW}WARNING!${NC} ${BLUE}A backup repository already exist:${NC} ${RESTIC_REPOSITORY}"
@@ -68,7 +71,7 @@ backup_setup() {
     export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
   fi
 
-  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" " S3 server (Amazon or MinIO)" "󱇶 Google Cloud Storage" " Back")
+  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" " S3 server (Amazon AWS)" " S3-compatible server (MinIO, RustFS...)" "󱇶 Google Cloud Storage" " Back")
   case $BACKUP_SETUP_MENU in
   " Local (USB)")
     # List USB drive mounted
@@ -104,12 +107,10 @@ backup_setup() {
     if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
       echo -e "${YELLOW}Repository is already initialized.${NC}"
       save_env_var RESTIC_REPOSITORY
-      return 0
     else
       if gum spin --spinner dot --title "Initializing backup repository..." --show-error -- restic init; then
         save_env_var RESTIC_REPOSITORY
         echo -e "${BLUE}Backup repository set to:${NC} ${RESTIC_REPOSITORY}"
-        return 0
       else
         unset RESTIC_REPOSITORY
         return 1
@@ -117,14 +118,56 @@ backup_setup() {
     fi
     backup_menu
     ;;
-  " S3 server (Amazon or MinIO)")
+  " S3 server (Amazon AWS)")
     echo "TBD"
     backup_setup
+    ;;
+  " S3-compatible server (MinIO, RustFS...)")
+    echo -e "Provide S3 server access key information:"
+    echo -e "${YELLOW}Use Ctrl+Shift+V to paste.${NC}"
+    aws_access_key_id=$(gum input --placeholder="Access Key")
+    if [ -z "$aws_access_key_id" ]; then
+      echo -e "${RED}You must provide a valid access key.${NC}"
+      return 1
+    fi
+    export AWS_ACCESS_KEY_ID=$aws_access_key_id
+    aws_secret_access_key=$(gum input --placeholder="Secret Key")
+    if [ -z "$aws_secret_access_key" ]; then
+      echo -e "${RED}You must provide a valid secret key.${NC}"
+      return 1
+    fi
+    export AWS_SECRET_ACCESS_KEY=$aws_secret_access_key
+
+    echo -e "Provide S3 server bucket URL:"
+    s3_bucket_url=$(gum input --placeholder="http://localhost:9000/bucket_name")
+    if [ -z "$s3_bucket_url" ]; then
+      echo -e "${RED}You must provide a valid bucket URL.${NC}"
+      return 1
+    fi
+    RESTIC_REPOSITORY="s3:$s3_bucket_url"
+    if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
+      echo -e "${YELLOW}Repository is already initialized.${NC}"
+      save_env_var RESTIC_REPOSITORY
+      save_env_var AWS_ACCESS_KEY_ID
+      save_env_var AWS_SECRET_ACCESS_KEY
+    else
+      if gum spin --spinner dot --title "Initializing backup repository..." --show-error -- restic init -r "$RESTIC_REPOSITORY"; then
+        save_env_var RESTIC_REPOSITORY
+        save_env_var AWS_ACCESS_KEY_ID
+        save_env_var AWS_SECRET_ACCESS_KEY
+        echo -e "${BLUE}Backup repository set to:${NC} ${RESTIC_REPOSITORY}"
+      else
+        unset RESTIC_REPOSITORY
+        return 1
+      fi
+    fi
+    backup_menu
     ;;
   "󱇶 Google Cloud Storage")
     echo "TBD"
     backup_setup
     ;;
+  # TODO: Backblaze B2 cloud storage.
   " Back")
     backup_menu
     ;;
@@ -149,7 +192,7 @@ backup_menu() {
 
   # Source env default file
   if [ -f "$HOME/.env" ]; then
-    # shellcheck source=~/.env
+    # shellcheck source=/home/datux/.env
     source "$HOME/.env"
   fi
 
