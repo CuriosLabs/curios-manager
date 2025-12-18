@@ -137,6 +137,7 @@ backup_setup() {
       return 1
     fi
     export AWS_SECRET_ACCESS_KEY=$aws_secret_access_key
+    printf "%s" "$aws_secret_access_key" | secret-tool store --label="Backup AWS secret password" restic aws_secret_access_key
 
     echo -e "Provide S3 server bucket URL:"
     s3_bucket_url=$(gum input --placeholder="http://localhost:9000/bucket_name")
@@ -144,17 +145,21 @@ backup_setup() {
       echo -e "${RED}You must provide a valid bucket URL.${NC}"
       return 1
     fi
+    # ask user for repo password
+    if ! backup_set_password; then
+      echo -e "${RED}Password not saved.${NC}"
+      return 1
+    fi
+    # Make repository
     RESTIC_REPOSITORY="s3:$s3_bucket_url"
-    if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
+    if gum spin --spinner dot --title "Checking backup configuration..." -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
       echo -e "${YELLOW}Repository is already initialized.${NC}"
       save_env_var RESTIC_REPOSITORY
       save_env_var AWS_ACCESS_KEY_ID
-      save_env_var AWS_SECRET_ACCESS_KEY
     else
       if gum spin --spinner dot --title "Initializing backup repository..." --show-error -- restic init -r "$RESTIC_REPOSITORY"; then
         save_env_var RESTIC_REPOSITORY
         save_env_var AWS_ACCESS_KEY_ID
-        save_env_var AWS_SECRET_ACCESS_KEY
         echo -e "${BLUE}Backup repository set to:${NC} ${RESTIC_REPOSITORY}"
       else
         unset RESTIC_REPOSITORY
@@ -196,8 +201,17 @@ backup_menu() {
     source "$HOME/.env"
   fi
 
+  # Export restic env variables
   if [[ ! -v RESTIC_PASSWORD_COMMAND ]]; then
     export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
+  fi
+  if [ ! -z "$AWS_ACCESS_KEY_ID" ]; then
+    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+  fi
+  aws_secret_access_key=$(secret-tool lookup restic aws_secret_access_key)
+  status=$?
+  if [ $status -eq 0 ]; then
+    export AWS_SECRET_ACCESS_KEY=$aws_secret_access_key
   fi
 
   # TODO: check if the repo is up / plugged ??
@@ -233,7 +247,7 @@ backup_menu() {
     fi
     # TODO: follow symlinks ??
     gum spin --spinner dot --title "Creating new snapshot..." --show-error -- restic backup --skip-if-unchanged --one-file-system -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
-    gum spin --spinner dot --title "Removing old snapshots..." --show-error -- restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune -r "$RESTIC_REPOSITORY"
+    gum spin --spinner dot --title "Removing old snapshots..." --show-error -- restic forget --keep-within 7d --keep-hourly 8 --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune -r "$RESTIC_REPOSITORY"
     gum spin --spinner dot --title "Checking repository health..." --show-error -- restic check -r "$RESTIC_REPOSITORY"
     backup_menu
     ;;
