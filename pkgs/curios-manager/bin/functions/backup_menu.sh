@@ -71,7 +71,7 @@ backup_setup() {
     export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
   fi
 
-  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" " S3 server (Amazon AWS)" " S3-compatible server (MinIO, RustFS...)" "󱇶 Google Cloud Storage" " Back")
+  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" "󰸏 S3 server (Amazon AWS)" " S3-compatible server (MinIO, RustFS...)" "󱇶 Google Cloud Storage" " Back")
   case $BACKUP_SETUP_MENU in
   " Local (USB)")
     # List USB drive mounted
@@ -118,12 +118,58 @@ backup_setup() {
     fi
     backup_menu
     ;;
-  " S3 server (Amazon AWS)")
-    echo "TBD"
-    backup_setup
+  "󰸏 S3 server (Amazon AWS)")
+    # Credentials
+    echo -e "Provide your AWS S3 server access key information:"
+    echo -e "${YELLOW}Use Ctrl+Shift+V to paste.${NC}"
+    aws_access_key_id=$(gum input --placeholder="AWS Access Key")
+    if [ -z "$aws_access_key_id" ]; then
+      echo -e "${RED}You must provide a valid access key.${NC}"
+      return 1
+    fi
+    export AWS_ACCESS_KEY_ID=$aws_access_key_id
+    aws_secret_access_key=$(gum input --placeholder="AWS Secret Key")
+    if [ -z "$aws_secret_access_key" ]; then
+      echo -e "${RED}You must provide a valid secret key.${NC}"
+      return 1
+    fi
+    export AWS_SECRET_ACCESS_KEY=$aws_secret_access_key
+    printf "%s" "$aws_secret_access_key" | secret-tool store --label="Backup AWS secret password" restic aws_secret_access_key
+
+    # Server URL
+    echo -e "Provide AWS S3 server bucket URL:"
+    s3_bucket_url=$(gum input --placeholder="s3.us-east-1.amazonaws.com/bucket_name")
+    if [ -z "$s3_bucket_url" ]; then
+      echo -e "${RED}You must provide a valid bucket URL.${NC}"
+      return 1
+    fi
+    # ask user for repo password
+    if ! backup_set_password; then
+      echo -e "${RED}Password not saved.${NC}"
+      return 1
+    fi
+
+    # Make repository
+    RESTIC_REPOSITORY="s3:$s3_bucket_url"
+    if gum spin --spinner dot --title "Checking backup configuration..." -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
+      echo -e "${YELLOW}Repository is already initialized.${NC}"
+      save_env_var RESTIC_REPOSITORY
+      save_env_var AWS_ACCESS_KEY_ID
+    else
+      if gum spin --spinner dot --title "Initializing backup repository..." --show-error -- restic init -r "$RESTIC_REPOSITORY"; then
+        save_env_var RESTIC_REPOSITORY
+        save_env_var AWS_ACCESS_KEY_ID
+        echo -e "${BLUE}Backup repository set to:${NC} ${RESTIC_REPOSITORY}"
+      else
+        unset RESTIC_REPOSITORY
+        return 1
+      fi
+    fi
+    backup_menu
     ;;
   " S3-compatible server (MinIO, RustFS...)")
-    echo -e "Provide S3 server access key information:"
+    # Credentials
+    echo -e "Provide your S3 server access key information:"
     echo -e "${YELLOW}Use Ctrl+Shift+V to paste.${NC}"
     aws_access_key_id=$(gum input --placeholder="Access Key")
     if [ -z "$aws_access_key_id" ]; then
@@ -139,6 +185,7 @@ backup_setup() {
     export AWS_SECRET_ACCESS_KEY=$aws_secret_access_key
     printf "%s" "$aws_secret_access_key" | secret-tool store --label="Backup AWS secret password" restic aws_secret_access_key
 
+    # Server URL
     echo -e "Provide S3 server bucket URL:"
     s3_bucket_url=$(gum input --placeholder="http://localhost:9000/bucket_name")
     if [ -z "$s3_bucket_url" ]; then
@@ -232,7 +279,7 @@ backup_menu() {
       echo "*_cache"
       echo "# Exclude trash folder"
       echo "$HOME/.local/share/Trash"
-      echo "# exclude iso files"
+      echo "# Exclude iso files"
       echo "*.iso"
       echo "# Add custom folders or files to exclude here"
     } >>"$backup_exclude_file"
