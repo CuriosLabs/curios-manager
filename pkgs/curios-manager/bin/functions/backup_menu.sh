@@ -71,7 +71,7 @@ backup_setup() {
     export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
   fi
 
-  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" "󰸏 S3 server (Amazon AWS)" " S3-compatible server (MinIO, RustFS...)" "󱇶 Google Cloud Storage" " Back")
+  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" "󰸏 S3 server (Amazon AWS)" " S3-compatible server (MinIO, RustFS...)" " Back")
   case $BACKUP_SETUP_MENU in
   " Local (USB)")
     # List USB drive mounted
