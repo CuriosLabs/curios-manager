@@ -10,7 +10,7 @@ stdenvNoCC.mkDerivation rec {
     owner = "CuriosLabs";
     repo = "curios-manager";
     rev = version;
-    hash = "";
+    hash = "sha256-JKLSOGrrPJyehllY0Xldxht16YegtDLUyffFwc2QypA=";
   };
 
   buildInputs = [
@@ -21,7 +21,7 @@ stdenvNoCC.mkDerivation rec {
     #pkgs.cosmic-settings
     #pkgs.cosmic-store
     pkgs.curl
-    pkgs.curios-dotfiles
+    #pkgs.curios-dotfiles
     pkgs.duf
     pkgs.dust
     pkgs.fastfetch
