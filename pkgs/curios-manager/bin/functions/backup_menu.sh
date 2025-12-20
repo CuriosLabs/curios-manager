@@ -264,7 +264,7 @@ backup_menu() {
   # TODO: check if the repo is up / plugged ??
 
   if [ ! -f "$backup_exclude_file" ]; then
-    # TODO: exclude ~/.local/state/nix/profiles/ - Steam games folder ??
+    # TODO: exclude ~/.local/state/nix/profiles/
     echo -e "Creating default backup exclude files..."
     dir=$(dirname "$backup_exclude_file")
     mkdir -p "$dir"
@@ -279,6 +279,10 @@ backup_menu() {
       echo "*_cache"
       echo "# Exclude trash folder"
       echo "$HOME/.local/share/Trash"
+      echo "# Exclude Steam games folder"
+      echo "$HOME/.local/share/Steam/steamapps"
+      echo "# Exclude LM-Studio models folder"
+      echo "$HOME/.lmstudio/models/lmstudio-community"
       echo "# Exclude iso files"
       echo "*.iso"
       echo "# Add custom folders or files to exclude here"
