@@ -23,10 +23,10 @@ stdenvNoCC.mkDerivation rec {
     pkgs.curl
     #pkgs.curios-dotfiles
     pkgs.duf
-    pkgs.dust
     pkgs.fastfetch
     pkgs.fwupd
     pkgs.gnutar
+    pkgs.gdu
     pkgs.gum
     pkgs.jq
     pkgs.libnotify

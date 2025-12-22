@@ -80,6 +80,10 @@ if ! available fastfetch; then
   echo -e "${RED}fastfetch command not found!${NC}"
   exit 2
 fi
+if ! available gdu; then
+  echo -e "${RED}gdu command not found!${NC}"
+  exit 2
+fi
 if ! available gum; then
   echo -e "${RED}gum command not found!${NC}"
   exit 2
