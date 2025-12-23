@@ -17,8 +17,23 @@ main_menu() {
   " Update")
     sudo whoami 1>/dev/null # Force prompt for sudo password now
     gum spin --spinner dot --title "Deleting oldest generations..." --show-error -- sudo nix-collect-garbage --delete-older-than 7d
+    status=$?
+    if [ $status -ne 0 ]; then
+      echo -e "${RED}Nix garbage collector failed!${NC}"
+      exit 1
+    fi
     gum spin --spinner dot --title "Upgrading packages..." --show-error -- sudo nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+    status=$?
+    if [ $status -ne 0 ]; then
+      echo -e "${RED}Nix packages upgrade failed!${NC}"
+      exit 1
+    fi
     gum spin --spinner dot --title "Running store garbage collector..." --show-error -- sudo nix-store --gc
+    status=$?
+    if [ $status -ne 0 ]; then
+      echo -e "${RED}Nix store garbage collector failed!${NC}"
+      exit 1
+    fi
     # Check if a reboot is necessary
     nix_generations
     echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
