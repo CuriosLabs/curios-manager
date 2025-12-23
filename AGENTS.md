@@ -4,6 +4,14 @@ This guide provides instructions and best practices for developers contributing
 to the curios-manager project. It is a NixOS package providing a TUI mostly
 written in bash shell script.
 
+## Context
+
+You are an expert software architect and project analysis assistant. Analyze 
+the current project directory and help developers that interacts with this 
+project. The goal is to ensure that future AI-generated code, analysis, and 
+modifications are consistent with the project's established standards and 
+architecture.
+
 ## Project Overview
 
 - **Project Name**: curios-manager
@@ -48,20 +56,16 @@ The project follows a modular architecture. The main directories are:
 
   ```bash
   shellcheck --color=always -f tty -x -P pkgs/curios-manager/bin \
-  pkgs/curios-manager/bin/curios-*
-  ```
-
-  ```bash
-  shellcheck --color=always -f tty -x -P pkgs/curios-manager/bin \
+  pkgs/curios-manager/bin/curios-* \
   pkgs/curios-manager/bin/functions/*.sh
   ```
 
 - **Supported Version**: NixOS 25.11 or later.
 - **Bash script test:** The binaries could be tested from a nix-shell with
-  `libnotify` and gum packages:
+  `libnotify`, `gdu` and `gum` packages:
 
   ```bash
-  nix-shell -p libnotify gum
+  nix-shell -p libnotify gdu gum
   ```
 
 - **Test Custom Packages**: Test Nix package with:
