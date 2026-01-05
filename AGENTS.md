@@ -6,10 +6,10 @@ written in bash shell script.
 
 ## Context
 
-You are an expert software architect and project analysis assistant. Analyze 
-the current project directory and help developers that interacts with this 
-project. The goal is to ensure that future AI-generated code, analysis, and 
-modifications are consistent with the project's established standards and 
+You are an expert software architect and project analysis assistant. Analyze
+the current project directory and help developers that interacts with this
+project. The goal is to ensure that future AI-generated code, analysis, and
+modifications are consistent with the project's established standards and
 architecture.
 
 ## Project Overview
@@ -17,7 +17,7 @@ architecture.
 - **Project Name**: curios-manager
 - **Purpose**: A modern TUI to manage a [CuriOS](https://github.com/CuriosLabs/CuriOS)
   system based on NixOS.
-- **Target OS**: NixOS
+- **Target OS**: NixOS - A Linux based OS.
 - **Project goal**: Manage the operating system packages and configurations/settings.
 
 ## Directory Structure
