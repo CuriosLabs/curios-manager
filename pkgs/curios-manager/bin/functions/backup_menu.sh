@@ -264,7 +264,7 @@ backup_menu() {
   # TODO: check if the repo is up / plugged ??
 
   if [ ! -f "$backup_exclude_file" ]; then
-    # TODO: exclude ~/.local/state/nix/profiles/ - Steam games folder ??
+    # TODO: exclude ~/.local/state/nix/profiles/
     echo -e "Creating default backup exclude files..."
     dir=$(dirname "$backup_exclude_file")
     mkdir -p "$dir"
@@ -279,6 +279,10 @@ backup_menu() {
       echo "*_cache"
       echo "# Exclude trash folder"
       echo "$HOME/.local/share/Trash"
+      echo "# Exclude Steam games folder"
+      echo "$HOME/.local/share/Steam/steamapps"
+      echo "# Exclude LM-Studio models folder"
+      echo "$HOME/.lmstudio/models/lmstudio-community"
       echo "# Exclude iso files"
       echo "*.iso"
       echo "# Add custom folders or files to exclude here"
@@ -296,6 +300,8 @@ backup_menu() {
     gum spin --spinner dot --title "Creating new snapshot..." --show-error -- restic backup --skip-if-unchanged --one-file-system -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
     gum spin --spinner dot --title "Removing old snapshots..." --show-error -- restic forget --keep-within 7d --keep-hourly 8 --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune -r "$RESTIC_REPOSITORY"
     gum spin --spinner dot --title "Checking repository health..." --show-error -- restic check -r "$RESTIC_REPOSITORY"
+    restic snapshots --group-by host -r "$RESTIC_REPOSITORY"
+    echo -e "${GREEN}Done.${NC}"
     backup_menu
     ;;
   "󱘪 Restore from backup")
@@ -317,6 +323,7 @@ backup_menu() {
 
       if gum confirm "Restore snapshot ${SNAPSHOT_ID} to ${HOME} ?"; then
         gum spin --spinner dot --title "Restoring..." --show-error -- restic restore "$SNAPSHOT_ID" --target "$HOME" -r "$RESTIC_REPOSITORY"
+        echo -e "${GREEN}Done.${NC}"
       else
         echo -e "${RED}Restoration canceled.${NC}"
       fi

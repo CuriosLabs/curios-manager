@@ -10,11 +10,11 @@ disk_menu() {
     disk_menu
     ;;
   "󰋜 Home folder usage")
-    dust -D "$HOME"
+    gdu "$HOME" -C
     disk_menu
     ;;
   " Root folder usage")
-    sudo dust -D -X /home /
+    gdu / -C
     disk_menu
     ;;
   "󰋊 Disk S.M.A.R.T health status")
