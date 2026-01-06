@@ -45,9 +45,10 @@ stdenvNoCC.mkDerivation rec {
     name = "dev.curioslabs.curiosmanager";
     exec = "/run/current-system/sw/bin/alacritty -e curios-manager";
     desktopName = "CuriOS Manager CLI";
-    icon = "desktop-curios-manager";
+    icon = "curios";
     categories = [ "System" ];
-    terminal = true;
+    terminal = false;
+    type = "Application";
   };
   installPhase = ''
     runHook preInstall
@@ -68,7 +69,7 @@ stdenvNoCC.mkDerivation rec {
     mkdir -p $out/share
     cp -r ${desktopItem}/share/applications $out/share
     mkdir -p $out/share/icons/hicolor/scalable/apps
-    cp pkgs/curios-manager/share/icons/hicolor/scalable/apps/nixos.svg $out/share/icons/hicolor/scalable/apps/desktop-curios-manager.svg
+    cp pkgs/curios-manager/share/icons/hicolor/scalable/apps/curios.svg $out/share/icons/hicolor/scalable/apps/curios.svg
 
     runHook postInstall
   '';
