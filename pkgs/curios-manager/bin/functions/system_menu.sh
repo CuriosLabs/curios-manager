@@ -5,7 +5,7 @@ system_menu() {
   local SETTINGS_FILE
   local SETTINGS_LAST_MOD
   local SYSTEM_MENU
-  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󰋊 Disk infos" " Settings (manual edit)" " Firmware" " Info" " Back")
+  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󱃶 Process Management (GPU)" "󰋊 Disk infos" " Settings (manual edit)" " Firmware" " Info" " Back")
   case $SYSTEM_MENU in
   " Shutdown")
     #cosmic-osd shutdown
@@ -22,6 +22,14 @@ system_menu() {
     ;;
   "󱃶 Process Management")
     btop
+    system_menu
+    ;;
+  "󱃶 Process Management (GPU)")
+    if ! available nvtop; then
+      echo -e "${RED}nvtop command not found!${NC} A configured GPU is required."
+    else
+      nvtop
+    fi
     system_menu
     ;;
   "󰋊 Disk infos")
