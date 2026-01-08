@@ -8,7 +8,7 @@ main_menu() {
   local DOTFILES_VERSION
   local HOME_DIR
   local SKEL_DIR
-  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Apps" " Update" " Upgrade" "󱘸 Backup" " System" "? Help" " About" "󰈆 Exit")
+  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Apps" " Update" " Upgrade" "󱘸 Backup" " System" " Settings (manual edit)" "? Help" " About" "󰈆 Exit")
   #echo "Your choice is: $MAIN_MENU"
   case $MAIN_MENU in
   "󰀻 Apps")
@@ -72,6 +72,20 @@ main_menu() {
     backup_menu
     ;;
   " System")
+    system_menu
+    ;;
+  " Settings (manual edit)")
+    SETTINGS_FILE="/etc/nixos/settings.nix"
+    SETTINGS_LAST_MOD=$(stat -c %Y $SETTINGS_FILE)
+    sudo "$EDITOR" $SETTINGS_FILE
+    if [[ $(stat -c %Y $SETTINGS_FILE) -gt $SETTINGS_LAST_MOD ]]; then
+      # Settings have changed, updating system.
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
+      gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --cores 0 --max-jobs auto
+      nix_generations
+      echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
+      reboot_check
+    fi
     system_menu
     ;;
   "? Help")

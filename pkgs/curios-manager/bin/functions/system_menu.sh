@@ -5,7 +5,7 @@ system_menu() {
   local SETTINGS_FILE
   local SETTINGS_LAST_MOD
   local SYSTEM_MENU
-  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󱃶 Process Management (GPU)" "󰋊 Disk infos" " Settings (manual edit)" " Firmware" " Info" " Back")
+  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󱃶 Process Management (GPU)" "󰋊 Disk infos" " Firmware" " Info" " Back")
   case $SYSTEM_MENU in
   " Shutdown")
     #cosmic-osd shutdown
@@ -34,20 +34,6 @@ system_menu() {
     ;;
   "󰋊 Disk infos")
     disk_menu
-    ;;
-  " Settings (manual edit)")
-    SETTINGS_FILE="/etc/nixos/settings.nix"
-    SETTINGS_LAST_MOD=$(stat -c %Y $SETTINGS_FILE)
-    sudo "$EDITOR" $SETTINGS_FILE
-    if [[ $(stat -c %Y $SETTINGS_FILE) -gt $SETTINGS_LAST_MOD ]]; then
-      # Settings have changed, updating system.
-      sudo whoami 1>/dev/null # Force prompt for sudo password now
-      gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --cores 0 --max-jobs auto
-      nix_generations
-      echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
-      reboot_check
-    fi
-    system_menu
     ;;
   " Firmware")
     gum spin --spinner globe --title "Refreshing firmware metadata..." --show-error -- fwupdmgr refresh --force
