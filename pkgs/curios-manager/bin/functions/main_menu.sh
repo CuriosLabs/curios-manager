@@ -86,7 +86,6 @@ main_menu() {
       echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
       reboot_check
     fi
-    system_menu
     ;;
   "? Help")
     help_menu
