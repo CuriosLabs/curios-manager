@@ -5,7 +5,7 @@ system_menu() {
   local SETTINGS_FILE
   local SETTINGS_LAST_MOD
   local SYSTEM_MENU
-  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󱃶 Process Management (GPU)" "󰋊 Disk infos" " Firmware" " Info" " Back")
+  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󱃶 Process Management (GPU)" "󰩠 Network Connections" "󰋊 Disk infos" " Firmware" " Info" " Back")
   case $SYSTEM_MENU in
   " Shutdown")
     #cosmic-osd shutdown
@@ -30,6 +30,10 @@ system_menu() {
     else
       nvtop
     fi
+    system_menu
+    ;;
+  "󰩠 Network Connections")
+    snitch
     system_menu
     ;;
   "󰋊 Disk infos")
