@@ -7,6 +7,8 @@ main_menu() {
   local CURRENT_KEYBOARD
   local DOTFILES_VERSION
   local HOME_DIR
+  local SETTINGS_FILE
+  local SETTINGS_LAST_MOD
   local SKEL_DIR
   MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Apps" " Update" " Upgrade" "󱘸 Backup" " System" " Settings (manual edit)" "? Help" " About" "󰈆 Exit")
   #echo "Your choice is: $MAIN_MENU"
