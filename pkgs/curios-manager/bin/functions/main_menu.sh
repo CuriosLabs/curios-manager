@@ -30,6 +30,12 @@ main_menu() {
       echo -e "${RED}Nix packages upgrade failed!${NC}"
       exit 1
     fi
+    gum spin --spinner dot --title "Upgrading nix flakes..." --show-error -- nix profile upgrade --all
+    status=$?
+    if [ $status -ne 0 ]; then
+      echo -e "${RED}Nix flakes upgrade failed!${NC}"
+      exit 1
+    fi
     gum spin --spinner dot --title "Running store garbage collector..." --show-error -- sudo nix-store --gc
     status=$?
     if [ $status -ne 0 ]; then
