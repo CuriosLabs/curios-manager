@@ -216,6 +216,7 @@ backup_setup() {
     backup_menu
     ;;
   "󱇶 Google Cloud Storage")
+    # TODO: GCP cloud storage.
     echo "TBD"
     backup_setup
     ;;
@@ -264,7 +265,6 @@ backup_menu() {
   # TODO: check if the repo is up / plugged ??
 
   if [ ! -f "$backup_exclude_file" ]; then
-    # TODO: exclude ~/.local/state/nix/profiles/
     echo -e "Creating default backup exclude files..."
     dir=$(dirname "$backup_exclude_file")
     mkdir -p "$dir"
@@ -285,11 +285,11 @@ backup_menu() {
       echo "$HOME/.lmstudio/models/lmstudio-community"
       echo "# Exclude iso files"
       echo "*.iso"
-      echo "# Add custom folders or files to exclude here"
+      echo "# Add custom folders or files to exclude here:"
     } >>"$backup_exclude_file"
   fi
 
-  BACKUP_MENU=$(gum choose --header "Select an option:" "󱘸 Backup now" "󱘪 Restore from backup" "󱙌 Setup your backup" "󱤢 Backup stats" " Back")
+  BACKUP_MENU=$(gum choose --header "Backing up your HOME directory - Select an option:" "󱘸 Backup now" "󱘪 Restore from backup" "󱤢 Backup stats" " Setup your backup" "󰂮 Edit exclude rules" " Back")
   case $BACKUP_MENU in
   "󱘸 Backup now")
     if [[ ! -v RESTIC_REPOSITORY ]]; then
@@ -332,9 +332,6 @@ backup_menu() {
     fi
     backup_menu
     ;;
-  "󱙌 Setup your backup")
-    backup_setup
-    ;;
   "󱤢 Backup stats")
     if [[ ! -v RESTIC_REPOSITORY ]]; then
       echo -e "${YELLOW}Backup parameters missing!${NC} Use Setup menu."
@@ -342,6 +339,17 @@ backup_menu() {
     fi
     restic stats -r "$RESTIC_REPOSITORY"
     restic snapshots --group-by host -r "$RESTIC_REPOSITORY"
+    backup_menu
+    ;;
+  " Setup your backup")
+    backup_setup
+    ;;
+  "󰂮 Edit exclude rules")
+    if [ ! -f "$backup_exclude_file" ]; then
+      echo -e "${RED}Exclude file $backup_exclude_file not found!${NC}"
+      exit 1
+    fi
+    "$EDITOR" "$backup_exclude_file"
     backup_menu
     ;;
   " Back")

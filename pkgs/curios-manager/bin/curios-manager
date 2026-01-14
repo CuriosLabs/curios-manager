@@ -88,6 +88,10 @@ if ! available gum; then
   echo -e "${RED}gum command not found!${NC}"
   exit 2
 fi
+if ! available snitch; then
+  echo -e "${RED}snitch command not found!${NC}"
+  exit 2
+fi
 if ! available tte; then
   echo -e "${RED}tte command not found!${NC}"
   exit 2

@@ -7,8 +7,10 @@ main_menu() {
   local CURRENT_KEYBOARD
   local DOTFILES_VERSION
   local HOME_DIR
+  local SETTINGS_FILE
+  local SETTINGS_LAST_MOD
   local SKEL_DIR
-  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Apps" " Update" " Upgrade" "󱘸 Backup" " System" "? Help" " About" "󰈆 Exit")
+  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Apps" " Update" " Upgrade" "󱘸 Backup" " System" " Settings (manual edit)" "? Help" " About" "󰈆 Exit")
   #echo "Your choice is: $MAIN_MENU"
   case $MAIN_MENU in
   "󰀻 Apps")
@@ -26,6 +28,12 @@ main_menu() {
     status=$?
     if [ $status -ne 0 ]; then
       echo -e "${RED}Nix packages upgrade failed!${NC}"
+      exit 1
+    fi
+    gum spin --spinner dot --title "Upgrading nix flakes..." --show-error -- nix profile upgrade --all
+    status=$?
+    if [ $status -ne 0 ]; then
+      echo -e "${RED}Nix flakes upgrade failed!${NC}"
       exit 1
     fi
     gum spin --spinner dot --title "Running store garbage collector..." --show-error -- sudo nix-store --gc
@@ -73,6 +81,19 @@ main_menu() {
     ;;
   " System")
     system_menu
+    ;;
+  " Settings (manual edit)")
+    SETTINGS_FILE="/etc/nixos/settings.nix"
+    SETTINGS_LAST_MOD=$(stat -c %Y $SETTINGS_FILE)
+    sudo "$EDITOR" $SETTINGS_FILE
+    if [[ $(stat -c %Y $SETTINGS_FILE) -gt $SETTINGS_LAST_MOD ]]; then
+      # Settings have changed, updating system.
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
+      gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --cores 0 --max-jobs auto
+      nix_generations
+      echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
+      reboot_check
+    fi
     ;;
   "? Help")
     help_menu
