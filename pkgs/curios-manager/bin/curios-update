@@ -135,8 +135,8 @@ if ! available tar; then
   echo -e "${RED}tar command not found!${NC}"
   exit 1
 fi
-if ! available find; then
-  echo -e "${RED}find command not found!${NC}"
+if ! available fd; then
+  echo -e "${RED}fd command not found!${NC}"
   exit 1
 fi
 
@@ -162,7 +162,7 @@ upgrade_curios() {
   echo -e "${GREEN}Downloading ${LATEST_VERSION} sources...${NC}"
   wget -O "${TMP_DIR}/CuriOS-${LATEST_VERSION}".tar.gz --show-progress "$LATEST_SOURCE"
   mkdir -p "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ && tar -C "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ -xzf "${TMP_DIR}/CuriOS-${LATEST_VERSION}".tar.gz
-  extracted_source_path=$(find "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ --min-depth 1 --max-depth 1 --type d | head -n 1)
+  extracted_source_path=$(fd . "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ --max-depth 1 --type d | head -n 1)
   echo "Sources extracted to ${extracted_source_path}"
   # Checking extracted source
   if [ ! -f "$extracted_source_path"/configuration.nix ]; then
@@ -236,4 +236,3 @@ if [ $UPGRADABLE -eq 1 ] && [ $UPGRADE_SYSTEM -eq 1 ]; then
   upgrade_curios
   exit 2
 fi
-
