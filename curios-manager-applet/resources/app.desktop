@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=Curios Manager Applet
+Comment=curios-manager TUI applet for COSMIC DE
+Type=Application
+Icon=dev.curioslabs.CuriosManagerApplet
+Exec=curios-manager-applet %F
+Terminal=false
+StartupNotify=true
+Categories=COSMIC
+Keywords=COSMIC
+NoDisplay=true
+X-CosmicApplet=true
+X-CosmicHoverPopup=Auto
+MimeType=
