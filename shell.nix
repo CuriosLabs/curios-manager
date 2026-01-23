@@ -14,10 +14,10 @@ pkgs.mkShell rec {
     libGL
 
     # X11 fallback deps (often checked by winit)
-    xorg.libX11
-    xorg.libXcursor
-    xorg.libXi
-    xorg.libXrandr
+    #xorg.libX11
+    #xorg.libXcursor
+    #xorg.libXi
+    #xorg.libXrandr
   ];
 
   LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";

@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 use crate::config::Config;
-use crate::fl;
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
-use cosmic::iced::{window::Id, Limits, Subscription};
-use cosmic::iced_winit::commands::popup::{destroy_popup, get_popup};
+use cosmic::iced::{window::Id, Subscription};
 use cosmic::prelude::*;
 use cosmic::widget;
 use futures_util::SinkExt;
@@ -19,18 +17,15 @@ pub struct AppModel {
     popup: Option<Id>,
     /// Configuration data that persists between application runs.
     config: Config,
-    /// Example row toggler.
-    example_row: bool,
 }
 
 /// Messages emitted by the application and its widgets.
 #[derive(Debug, Clone)]
 pub enum Message {
-    TogglePopup,
     PopupClosed(Id),
+    LaunchApp,
     SubscriptionChannel,
     UpdateConfig(Config),
-    ToggleExampleRow(bool),
 }
 
 /// Create a COSMIC application from the app model
@@ -93,8 +88,8 @@ impl cosmic::Application for AppModel {
     fn view(&self) -> Element<'_, Self::Message> {
         self.core
             .applet
-            .icon_button("display-symbolic")
-            .on_press(Message::TogglePopup)
+            .icon_button("curios")
+            .on_press(Message::LaunchApp)
             .into()
     }
 
@@ -104,11 +99,7 @@ impl cosmic::Application for AppModel {
     fn view_window(&self, _id: Id) -> Element<'_, Self::Message> {
         let content_list = widget::list_column()
             .padding(5)
-            .spacing(0)
-            .add(widget::settings::item(
-                fl!("example-row"),
-                widget::toggler(self.example_row).on_toggle(Message::ToggleExampleRow),
-            ));
+            .spacing(0);
 
         self.core.applet.popup_container(content_list).into()
     }
@@ -158,28 +149,13 @@ impl cosmic::Application for AppModel {
             Message::UpdateConfig(config) => {
                 self.config = config;
             }
-            Message::ToggleExampleRow(toggled) => self.example_row = toggled,
-            Message::TogglePopup => {
-                return if let Some(p) = self.popup.take() {
-                    destroy_popup(p)
-                } else {
-                    let new_id = Id::unique();
-                    self.popup.replace(new_id);
-                    let mut popup_settings = self.core.applet.get_popup_settings(
-                        self.core.main_window_id().unwrap(),
-                        new_id,
-                        None,
-                        None,
-                        None,
-                    );
-                    popup_settings.positioner.size_limits = Limits::NONE
-                        .max_width(372.0)
-                        .min_width(300.0)
-                        .min_height(200.0)
-                        .max_height(1080.0);
-                    get_popup(popup_settings)
-                }
-            }
+            Message::LaunchApp => {
+                // Launch the Curios manager TUI in a terminal
+                let _ = std::process::Command::new("/run/current-system/sw/bin/alacritty")
+                    .arg("-e")
+                    .arg("curios-manager")
+                    .spawn();
+            } 
             Message::PopupClosed(id) => {
                 if self.popup.as_ref() == Some(&id) {
                     self.popup = None;
