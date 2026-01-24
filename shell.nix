@@ -1,7 +1,15 @@
 { pkgs ? import <nixpkgs> { } }:
 
 pkgs.mkShell rec {
-  nativeBuildInputs = with pkgs; [ pkg-config just ];
+  nativeBuildInputs = with pkgs; [
+    # For pkgs/curios-manager/
+    libnotify
+    gdu
+    gum
+    # For Rust curios-manager-applet/
+    pkg-config
+    just
+  ];
 
   buildInputs = with pkgs; [
     rustup

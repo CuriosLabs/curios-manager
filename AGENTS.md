@@ -27,6 +27,8 @@ The project follows a modular architecture. The main directories are:
 - `pkgs/curios-manager/`: The Nix custom package main directory.
 - `pkgs/curios-manager/bin/`: The bash shell scripts subdirectory.
 - `pkgs/curios-manager/bin/functions/`: The `curios-manager` TUI bash functions directory.
+- `curios-manager-applet/`: The `libcosmic` applet for the COSMIC desktop
+environment, written in Rust.
 
 ## Key Files
 
@@ -37,6 +39,7 @@ The project follows a modular architecture. The main directories are:
   version of CuriOS is available on Github. It also can upgrade the whole
   system. `curios-update --check` can be called from a systemd timer.
 - `default.nix`: The default nix build/import package file.
+- `curios-manager-applet/src/app.rs`: The main script file for the COSMIC applet.
 
 ## Coding Style and Best Practices
 
@@ -79,6 +82,74 @@ The project follows a modular architecture. The main directories are:
   ```bash
   git log
   ```
+
+## Curios Manager Applet Development
+
+The project includes a COSMIC panel applet written in Rust using `libcosmic`,
+located in `curios-manager-applet/`.
+
+### Applet Directory Structure
+
+- `curios-manager-applet/`: Root directory of the applet.
+- `curios-manager-applet/src/`: Rust source code.
+- `curios-manager-applet/i18n/`: Fluent translation files.
+- `curios-manager-applet/resources/`: Desktop entry, icons, and metainfo.
+
+### Key Applet Files
+
+- `curios-manager-applet/Cargo.toml`: Rust package manifest.
+- `curios-manager-applet/justfile`: Command runner configuration (build, run, install).
+- `curios-manager-applet/src/app.rs`: Main application logic (Model-View-Update pattern).
+- `curios-manager-applet/src/config.rs`: Configuration struct and loading.
+
+### Applet Development Environment
+
+**Important**: Development requires a Nix shell with specific library paths for
+Wayland and OpenGL.
+
+1. **Enter the Shell**:
+
+   ```bash
+   nix-shell
+   ```
+
+   This uses the `shell.nix` in the project root to configure `LD_LIBRARY_PATH`.
+
+2. **Navigate to Applet Directory**:
+
+   ```bash
+   cd curios-manager-applet
+   ```
+
+### Applet Build and Run Commands
+
+- **Run locally**:
+
+  ```bash
+  just run
+  ```
+
+  *Note: This builds and runs the applet. Ensure you are in the `nix-shell`.*
+
+- **Build Release**:
+
+  ```bash
+  just build-release
+  ```
+
+- **Lint/Check**:
+
+  ```bash
+  just check
+  ```
+
+### Applet Architecture
+
+- **Framework**: `libcosmic` (based on `iced`).
+- **Pattern**: The Elm Architecture (Model, Message, Update, View).
+- **Interactions**:
+  - The applet displays an icon in the COSMIC panel.
+  - Clicking the icon triggers `Message::LaunchApp`, which spawns `alacritty -e curios-manager`.
 
 ## Contributing
 
