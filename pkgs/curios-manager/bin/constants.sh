@@ -9,7 +9,7 @@ readonly YELLOW="\033[33;1;3m" # Yellow, bold and italic
 readonly NC="\033[0m"          # No Color
 
 #------------- Variables init
-readonly SCRIPT_VERSION="0.19"
+readonly SCRIPT_VERSION="0.20"
 VERBOSE=0
 readonly CURIOS_SRC_URL="https://github.com/CuriosLabs/CuriOS"
 LIST_GEN=""

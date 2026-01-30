@@ -58,6 +58,7 @@ while true; do
 done
 
 if [ "$VERBOSE" -eq 1 ]; then
+  SCRIPT_PATH="$(dirname "$0")"
   echo -e "Script current path: ${SCRIPT_PATH}"
 fi
 

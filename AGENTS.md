@@ -61,12 +61,13 @@ The project follows a modular architecture. The main directories are:
   ```
 
 - **Supported Version**: NixOS 25.11 or later.
-- **Bash script test:** The binaries could be tested from a nix-shell with
-  `libnotify`, `gdu` and `gum` packages:
+- **Bash script test:** The binaries could be tested from a nix-shell:
 
   ```bash
-  nix-shell -p libnotify gdu gum
+  nix-shell
   ```
+
+  This uses the `shell.nix` in the project root to configure dependencies.
 
 - **Test Custom Packages**: Test Nix package with:
 
@@ -79,10 +80,3 @@ The project follows a modular architecture. The main directories are:
   ```bash
   git log
   ```
-
-## Contributing
-
-- **Project Source**: [curios-manager GitHub](https://github.com/CuriosLabs/curios-manager)
-- **Contributing Policy**: See @CONTRIBUTING.md file.
-- **Branching Strategy**: For new features, create a branch named
-  `feature/<YourFeatureName>` (e.g., `git checkout -b feature/AmazingFeature`).

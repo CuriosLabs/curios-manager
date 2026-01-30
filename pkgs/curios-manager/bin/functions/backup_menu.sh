@@ -187,7 +187,7 @@ backup_setup() {
 
     # Server URL
     echo -e "Provide S3 server bucket URL:"
-    s3_bucket_url=$(gum input --placeholder="http://localhost:9000/bucket_name")
+    s3_bucket_url=$(gum input --placeholder="http://127.0.0.1:9000/bucket_name")
     if [ -z "$s3_bucket_url" ]; then
       echo -e "${RED}You must provide a valid bucket URL.${NC}"
       return 1
@@ -299,6 +299,7 @@ backup_menu() {
     # TODO: follow symlinks ??
     gum spin --spinner dot --title "Creating new snapshot..." --show-error -- restic backup --skip-if-unchanged --one-file-system -r "$RESTIC_REPOSITORY" --exclude-file="$backup_exclude_file" "$HOME"
     gum spin --spinner dot --title "Removing old snapshots..." --show-error -- restic forget --keep-within 7d --keep-hourly 8 --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune -r "$RESTIC_REPOSITORY"
+    gum spin --spinner dot --title "Cleaning local snapshots..." --show-error -- restic cache --cleanup
     gum spin --spinner dot --title "Checking repository health..." --show-error -- restic check -r "$RESTIC_REPOSITORY"
     restic snapshots --group-by host -r "$RESTIC_REPOSITORY"
     echo -e "${GREEN}Done.${NC}"
