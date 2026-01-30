@@ -1,6 +1,6 @@
 { pkgs ? import <nixpkgs> { } }:
 
-pkgs.mkShell rec {
+pkgs.mkShell {
   nativeBuildInputs = with pkgs; [
     # For pkgs/curios-manager/
     libnotify
