@@ -37,6 +37,9 @@ The project follows a modular architecture. The main directories are:
   version of CuriOS is available on Github. It also can upgrade the whole
   system. `curios-update --check` can be called from a systemd timer.
 - `default.nix`: The default nix build/import package file.
+- `shell.nix`: A Nix configuration file for the `nix-shell` command. It will setup
+a temporary environment with the specified dependencies, tools and configurations
+for the bash scripts.
 
 ## Coding Style and Best Practices
 
