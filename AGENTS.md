@@ -71,6 +71,12 @@ the hash signature for the Nix package:
   just publish 0.21
   ```
 
+- **Run**: Build the Nix package (from Github) and run it:
+
+  ```bash
+  just run
+  ```
+
 - **Clean**: Remove build artifacts:
 
   ```bash
