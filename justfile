@@ -44,7 +44,7 @@ tag VERSION:
   sed "s/version = \".*/version = \"{{VERSION}}\";/g" -i ./pkgs/curios-manager/default.nix
   sed "s/hash = \".*/hash = \"\";/g" -i ./pkgs/curios-manager/default.nix
   sed "s/readonly SCRIPT_VERSION=\".*/readonly SCRIPT_VERSION=\"{{VERSION}}\"/g" -i ./pkgs/curios-manager/bin/constants.sh
-  git commit -m "Release {{VERSION}}"
+  git commit -a -m "Release {{VERSION}}"
   git pull
   @echo "Tagging version: {{VERSION}}"
   git tag -a {{VERSION}} -m "Release {{VERSION}}"

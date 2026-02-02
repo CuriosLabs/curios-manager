@@ -14,6 +14,9 @@ pkgs.mkShell {
     gum
     jq
     libnotify
+    libsecret
+    #nvtopPackages.full
+    restic
     smartmontools
     terminaltexteffects
     wget
