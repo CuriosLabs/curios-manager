@@ -11,7 +11,6 @@ default:
 build VERSION:
   #!/usr/bin/env bash
   set -euxo pipefail
-  git checkout testing
   sed "s/version = \".*/version = \"{{VERSION}}\";/g" -i ./pkgs/curios-manager/default.nix
   HASH=`nix --extra-experimental-features nix-command hash convert --hash-algo sha256 "$(nix-prefetch-url --unpack https://github.com/{{owner}}/{{name}}/archive/{{VERSION}}.tar.gz)"`
   sed "s/hash = \".*/hash = \"${HASH}\";/g" -i ./pkgs/curios-manager/default.nix
@@ -30,18 +29,26 @@ lint:
   @echo 'Linting Bash files...'
   shellcheck --color=always -f tty -x -P pkgs/curios-manager/bin pkgs/curios-manager/bin/curios-* pkgs/curios-manager/bin/functions/*.sh
 
+# Complete pusblish process, lint, tag then build and update hash signature, finally push on github.
+publish VERSION:
+  git checkout testing
+  @just clean
+  @just lint
+  @just tag {{VERSION}}
+  sleep 5
+  @just build {{VERSION}}
+
 # Update version number, create Git commit and tag and push it.
 tag VERSION:
-  git checkout testing
   @echo "Updating version number to {{VERSION}}..."
   sed "s/version = \".*/version = \"{{VERSION}}\";/g" -i ./pkgs/curios-manager/default.nix
   sed "s/hash = \".*/hash = \"\";/g" -i ./pkgs/curios-manager/default.nix
   sed "s/readonly SCRIPT_VERSION=\".*/readonly SCRIPT_VERSION=\"{{VERSION}}\"/g" -i ./pkgs/curios-manager/bin/constants.sh
-  #git commit -m "Release {{VERSION}}"
+  git commit -m "Release {{VERSION}}"
   git pull
   @echo "Tagging version: {{VERSION}}"
-  #git tag -a {{VERSION}} -m "Release {{VERSION}}"
-  #git push origin {{VERSION}}
+  git tag -a {{VERSION}} -m "Release {{VERSION}}"
+  git push origin {{VERSION}}
 
 # Remove Git tag locally and remotely
 removetag VERSION:
