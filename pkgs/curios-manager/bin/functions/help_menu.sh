@@ -10,7 +10,7 @@ help_menu() {
     help_menu
     ;;
   "󰄄 CuriOS")
-    if ! xdg-open "https://github.com/CuriosLabs/CuriOS"; then
+    if ! xdg-open "https://github.com/CuriosLabs/CuriOS/blob/master/docs/index.md"; then
       echo -e "${RED}Failed to open URL. Is a web browser installed?${NC}"
     fi
     help_menu

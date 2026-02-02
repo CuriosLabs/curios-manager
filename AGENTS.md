@@ -37,6 +37,9 @@ The project follows a modular architecture. The main directories are:
   version of CuriOS is available on Github. It also can upgrade the whole
   system. `curios-update --check` can be called from a systemd timer.
 - `default.nix`: The default nix build/import package file.
+- `shell.nix`: A Nix configuration file for the `nix-shell` command. It will setup
+a temporary environment with the specified dependencies, tools and configurations
+for the bash scripts and `just` command.
 
 ## Coding Style and Best Practices
 
@@ -46,34 +49,35 @@ The project follows a modular architecture. The main directories are:
 
 ## Build, Test, and Development Commands
 
-- **Lint Nix Files**: Lint Nix files using `statix`:
+This project uses [Just](https://github.com/casey/just) to manage development commands.
+Use the appropriate shell environment before with `nix-shell shell.nix`.
+
+- **Lint Files**: Check code quality for Nix and Bash files:
 
   ```bash
-  statix check pkgs/curios-manager/default.nix
+  just lint
   ```
 
-- **Lint Shell Scripts**: Bash shell scripts must be checked with `shellcheck`:
+- **Test Application**: Launch the `curios-manager` TUI:
 
   ```bash
-  shellcheck --color=always -f tty -x -P pkgs/curios-manager/bin \
-  pkgs/curios-manager/bin/curios-* \
-  pkgs/curios-manager/bin/functions/*.sh
+  just test
+  ```
+
+- **Publish a new version**: Create a new git tag, push it, build it and update
+the hash signature for the Nix package:
+
+  ```bash
+  just publish 0.21
+  ```
+
+- **Clean**: Remove build artifacts:
+
+  ```bash
+  just clean
   ```
 
 - **Supported Version**: NixOS 25.11 or later.
-- **Bash script test:** The binaries could be tested from a nix-shell:
-
-  ```bash
-  nix-shell
-  ```
-
-  This uses the `shell.nix` in the project root to configure dependencies.
-
-- **Test Custom Packages**: Test Nix package with:
-
-  ```bash
-  nix-build && nix-env -i -f default.nix
-  ```
 
 - **Analyze**: Get latest code changes from git:
 
