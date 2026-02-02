@@ -9,6 +9,42 @@ A modern TUI to control your [CuriOS](https://github.com/CuriosLabs/CuriOS) syst
 
 -----
 
+## Build, Test, and Development Commands
+
+This project uses [Just](https://github.com/casey/just) to manage development commands.
+Use the appropriate shell environment before with `nix-shell shell.nix`.
+
+- **Lint Files**: Check code quality for Nix and Bash files:
+
+  ```bash
+  just lint
+  ```
+
+- **Test Application**: Launch the `curios-manager` TUI:
+
+  ```bash
+  just test
+  ```
+
+- **Publish a new version**: Create a new git tag, push it, build it and update
+the hash signature for the Nix package:
+
+  ```bash
+  just publish 0.21
+  ```
+
+- **Clean**: Remove build artifacts:
+
+  ```bash
+  just clean
+  ```
+
+- **List Commands**: Show all available recipes:
+
+  ```bash
+  just --list
+  ```
+
 ## License
 
 Copyright (C) 2025-2026  David BASTIEN
