@@ -7,16 +7,9 @@ owner := 'CuriosLabs'
 default:
   @just --list
 
-# Build the Nix package fetch from Github tag, update the hash signature and push it to git.
-build VERSION:
-  #!/usr/bin/env bash
-  set -euxo pipefail
-  sed "s/version = \".*/version = \"{{VERSION}}\";/g" -i ./pkgs/curios-manager/default.nix
-  HASH=`nix --extra-experimental-features nix-command hash convert --hash-algo sha256 "$(nix-prefetch-url --unpack https://github.com/{{owner}}/{{name}}/archive/{{VERSION}}.tar.gz)"`
-  sed "s/hash = \".*/hash = \"${HASH}\";/g" -i ./pkgs/curios-manager/default.nix
+# Build the current version of the Nix package and install it in `/nix/store/`.
+build:
   nix-build ./default.nix --show-trace
-  git commit -a -m "Updated hash signature"
-  git push
 
 # Cleaning nix pkgs build result folder.
 clean:
@@ -29,14 +22,14 @@ lint:
   @echo 'Linting Bash files...'
   shellcheck --color=always -f tty -x -P pkgs/curios-manager/bin pkgs/curios-manager/bin/curios-* pkgs/curios-manager/bin/functions/*.sh
 
-# Complete pusblish process, lint, tag then build and update hash signature, finally push on github.
+# Complete publish process: lint, tag then build and update hash signature, finally push on github.
 publish VERSION:
   git checkout testing
   @just clean
   @just lint
   @just tag {{VERSION}}
   sleep 5
-  @just build {{VERSION}}
+  @just hash-update {{VERSION}}
 
 # Update version number, create Git commit and tag and push it.
 tag VERSION:
@@ -55,6 +48,21 @@ removetag VERSION:
   git tag -d {{VERSION}}
   git push --delete origin {{VERSION}}
 
-# Launch curios-manager script.
+# Build the Nix package and run it.
+run:
+  @just build
+  ./result/bin/curios-manager
+
+# Update the Nix package hash signature, commit and push to git.
+hash-update VERSION:
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  sed "s/version = \".*/version = \"{{VERSION}}\";/g" -i ./pkgs/curios-manager/default.nix
+  HASH=`nix --extra-experimental-features nix-command hash convert --hash-algo sha256 "$(nix-prefetch-url --unpack https://github.com/{{owner}}/{{name}}/archive/{{VERSION}}.tar.gz)"`
+  sed "s/hash = \".*/hash = \"${HASH}\";/g" -i ./pkgs/curios-manager/default.nix
+  git commit -a -m "Updated hash signature"
+  git push
+
+# Launch curios-manager bash script directly (not the Nix pkgs).
 test:
   ./pkgs/curios-manager/bin/curios-manager
