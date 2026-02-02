@@ -15,7 +15,7 @@ build VERSION:
   HASH=`nix --extra-experimental-features nix-command hash convert --hash-algo sha256 "$(nix-prefetch-url --unpack https://github.com/{{owner}}/{{name}}/archive/{{VERSION}}.tar.gz)"`
   sed "s/hash = \".*/hash = \"${HASH}\";/g" -i ./pkgs/curios-manager/default.nix
   nix-build ./default.nix --show-trace
-  git commit -m "Updated hash signature"
+  git commit -a -m "Updated hash signature"
   git push
 
 # Cleaning nix pkgs build result folder.
