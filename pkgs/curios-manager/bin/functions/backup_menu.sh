@@ -104,7 +104,7 @@ backup_setup() {
     RESTIC_REPOSITORY="${usb_choosen_drive}$(hostname)-${USER}"
     mkdir -p "$RESTIC_REPOSITORY"
     export RESTIC_REPOSITORY
-    if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
+    if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic cat -r "$RESTIC_REPOSITORY" config 1>/dev/null; then
       echo -e "${YELLOW}Repository is already initialized.${NC}"
       save_env_var RESTIC_REPOSITORY
     else
@@ -151,7 +151,7 @@ backup_setup() {
 
     # Make repository
     RESTIC_REPOSITORY="s3:$s3_bucket_url"
-    if gum spin --spinner dot --title "Checking backup configuration..." -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
+    if gum spin --spinner dot --title "Checking backup configuration..." -- restic cat -r "$RESTIC_REPOSITORY" config 1>/dev/null; then
       echo -e "${YELLOW}Repository is already initialized.${NC}"
       save_env_var RESTIC_REPOSITORY
       save_env_var AWS_ACCESS_KEY_ID
@@ -199,7 +199,7 @@ backup_setup() {
     fi
     # Make repository
     RESTIC_REPOSITORY="s3:$s3_bucket_url"
-    if gum spin --spinner dot --title "Checking backup configuration..." -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
+    if gum spin --spinner dot --title "Checking backup configuration..." -- restic cat -r "$RESTIC_REPOSITORY" config 1>/dev/null; then
       echo -e "${YELLOW}Repository is already initialized.${NC}"
       save_env_var RESTIC_REPOSITORY
       save_env_var AWS_ACCESS_KEY_ID
@@ -225,6 +225,30 @@ backup_setup() {
     backup_menu
     ;;
   esac
+}
+
+#------------- Backup files explorer
+backup_files_listing() {
+  if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic cat -r "$RESTIC_REPOSITORY" -q --no-lock config 1>/dev/null; then
+    SNAPSHOTS_LIST=$(restic snapshots --json -r "$RESTIC_REPOSITORY" -q --no-lock)
+    # Let user choose a snapshot
+    CHOSEN_SNAPSHOT=$(echo "$SNAPSHOTS_LIST" | jq -r '(sort_by(.time) | reverse) | .[] | "\(.short_id)\t\(.time | .[0:16] | gsub("T"; " "))\t\((.summary.total_bytes_processed / (1024*1024*1024) * 100 | round) / 100)GiB\t\(.paths | join(" "))"' | gum choose --header "Choose a snapshot to explore:")
+
+    if [ -z "$CHOSEN_SNAPSHOT" ]; then
+      echo -e "${YELLOW}No snapshot selected.${NC}"
+      backup_menu
+    fi
+
+    SNAPSHOT_ID=$(echo "$CHOSEN_SNAPSHOT" | cut -f1)
+    #SNAPSHOT_FILE_PATH=$(echo "$CHOSEN_SNAPSHOT" | cut -f4)
+    #SNAPSHOT_LS_FILES=$(restic ls -r "$RESTIC_REPOSITORY" --json -q --no-lock $SNAPSHOT_ID $SNAPSHOT_FILE_PATH)
+    #echo $SNAPSHOT_LS_FILES
+    #$(echo "SNAPSHOT_LS_FILES" | gum choose --header "Choose a snapshot to explore:")
+
+    restic ls -r "$RESTIC_REPOSITORY" -q --no-lock --ncdu "$SNAPSHOT_ID" | ncdu -e --show-mtime --sort name -f -
+  else
+    echo -e "${RED}Backup configuration could not be read.${NC}"
+  fi
 }
 
 #------------- Backup menu
@@ -289,7 +313,7 @@ backup_menu() {
     } >>"$backup_exclude_file"
   fi
 
-  BACKUP_MENU=$(gum choose --header "Backing up your HOME directory - Select an option:" "󱘸 Backup now" "󱘪 Restore from backup" "󱤢 Backup stats" " Setup your backup" "󰂮 Edit exclude rules" " Back")
+  BACKUP_MENU=$(gum choose --header "Backing up your HOME directory - Select an option:" "󱘸 Backup now" "󱘪 Restore from backup" "󱤢 Backup stats" "󱤢 Backup files explorer" " Setup your backup" "󰂮 Edit exclude rules" " Back")
   case $BACKUP_MENU in
   "󱘸 Backup now")
     if [[ ! -v RESTIC_REPOSITORY ]]; then
@@ -301,7 +325,7 @@ backup_menu() {
     gum spin --spinner dot --title "Removing old snapshots..." --show-error -- restic forget --keep-within 7d --keep-hourly 8 --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune -r "$RESTIC_REPOSITORY"
     gum spin --spinner dot --title "Cleaning local snapshots..." --show-error -- restic cache --cleanup
     gum spin --spinner dot --title "Checking repository health..." --show-error -- restic check -r "$RESTIC_REPOSITORY"
-    restic snapshots --group-by host -r "$RESTIC_REPOSITORY"
+    restic snapshots --group-by host -r "$RESTIC_REPOSITORY" -q --no-lock
     echo -e "${GREEN}Done.${NC}"
     backup_menu
     ;;
@@ -310,7 +334,7 @@ backup_menu() {
       echo -e "${YELLOW}Backup parameters missing!${NC} Using Setup menu..."
       backup_setup
     fi
-    if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic -r "$RESTIC_REPOSITORY" cat config 1>/dev/null; then
+    if gum spin --spinner dot --title "Checking backup configuration..." --show-error -- restic cat -r "$RESTIC_REPOSITORY" config 1>/dev/null; then
       SNAPSHOTS_LIST=$(restic snapshots --json -r "$RESTIC_REPOSITORY")
       # Let user choose a snapshot
       CHOSEN_SNAPSHOT=$(echo "$SNAPSHOTS_LIST" | jq -r '(sort_by(.time) | reverse) | .[] | "\(.short_id)\t\(.time | .[0:16] | gsub("T"; " "))\t\((.summary.total_bytes_processed / (1024*1024*1024) * 100 | round) / 100)GiB\t\(.paths | join(" "))"' | gum choose --header "Choose a snapshot to restore")
@@ -340,6 +364,14 @@ backup_menu() {
     fi
     restic stats -r "$RESTIC_REPOSITORY"
     restic snapshots --group-by host -r "$RESTIC_REPOSITORY"
+    backup_menu
+    ;;
+  "󱤢 Backup files explorer")
+    if [[ ! -v RESTIC_REPOSITORY ]]; then
+      echo -e "${YELLOW}Backup parameters missing!${NC} Use Setup menu."
+      backup_menu
+    fi
+    backup_files_listing
     backup_menu
     ;;
   " Setup your backup")

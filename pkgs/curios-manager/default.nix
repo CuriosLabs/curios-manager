@@ -26,6 +26,7 @@ stdenvNoCC.mkDerivation rec {
     pkgs.jq
     pkgs.libnotify
     pkgs.libsecret
+    pkgs.ncdu
     #pkgs.nvtopPackages.full
     pkgs.restic
     pkgs.smartmontools

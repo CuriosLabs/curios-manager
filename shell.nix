@@ -15,6 +15,7 @@ pkgs.mkShell {
     jq
     libnotify
     libsecret
+    ncdu
     #nvtopPackages.full
     restic
     smartmontools
