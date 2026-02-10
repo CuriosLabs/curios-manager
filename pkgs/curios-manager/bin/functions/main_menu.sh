@@ -36,12 +36,12 @@ main_menu() {
       echo -e "${RED}Nix flakes upgrade failed!${NC}"
       exit 1
     fi
-    gum spin --spinner dot --title "Running store garbage collector..." --show-error -- sudo nix-store --gc
-    status=$?
-    if [ $status -ne 0 ]; then
-      echo -e "${RED}Nix store garbage collector failed!${NC}"
-      exit 1
-    fi
+    #gum spin --spinner dot --title "Running store garbage collector..." --show-error -- sudo nix-store --gc
+    #status=$?
+    #if [ $status -ne 0 ]; then
+    #  echo -e "${RED}Nix store garbage collector failed!${NC}"
+    #  exit 1
+    #fi
     # Check if a reboot is necessary
     nix_generations
     echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"

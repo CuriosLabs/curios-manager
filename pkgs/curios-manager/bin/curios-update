@@ -39,15 +39,18 @@ usage() {
 ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}         Print this message.
   ${GREY}--check${NC}            Check online if a most recent version of CuriOS exist.
+  ${GREY}--update${NC}           Update installed packages, do a Nix collect garbage, warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}          Download latest CuriOS and install it. Implies --check option.
   ${GREY}-v, --verbose${NC}      Print more information.
   ${GREY}--version${NC}          Print version number and exit.
 
 ${GREY}EXAMPLES:${NC}
-  Check online for the latest version:
+  Check online for the latest CuriOS version:
     ${GREY}curios-update --check${NC}
-  Upgrade system:
-    ${GREY}curios-update --upgrade${NC}"
+  Upgrade whole system to latest version:
+    ${GREY}sudo curios-update --upgrade${NC}
+  Update installed packages, Nix garbage collect:
+    ${GREY}curios-update --update${NC}"
   exit 0
 }
 
@@ -55,6 +58,7 @@ ${GREY}EXAMPLES:${NC}
 readonly SCRIPT_VERSION="0.12"
 VERBOSE=0
 CHECK_ONLINE=0
+UPDATE_SYSTEM=0
 UPGRADE_SYSTEM=0
 UPGRADABLE=0
 LATEST_VERSION=""
@@ -63,7 +67,7 @@ NIX_CHANNEL_URL=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,upgrade" --options ":hv" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,update,upgrade" --options ":hv" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -81,6 +85,10 @@ while true; do
     ;;
   --check)
     CHECK_ONLINE=1
+    shift
+    ;;
+  --update)
+    UPDATE_SYSTEM=1
     shift
     ;;
   --upgrade)
@@ -107,7 +115,7 @@ if [ $VERBOSE -eq 1 ]; then
 fi
 
 # This script must be run as root for --upgrade option
-if [ "$EUID" -ne 0 ] && [ $UPGRADE_SYSTEM -eq 1 ]; then
+if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 ]]; then
   echo -e "${RED}This script MUST be run as root: sudo curios-update --upgrade${NC}" >&2
   exit 1
 fi
@@ -149,6 +157,27 @@ get_latest_version() {
   LATEST_INFO=$(curl -f -L --silent "https://api.github.com/repos/CuriosLabs/CuriOS/tags" | jq -r '.[0]')
   LATEST_VERSION=$(echo "$LATEST_INFO" | jq -r '.name')
   LATEST_SOURCE=$(echo "$LATEST_INFO" | jq -r '.tarball_url')
+}
+
+# Update Nix packages, system, collect garbage
+update_curios() {
+  echo "Launching Nix garbage collection..."
+  nix-collect-garbage --delete-older-than 7d
+  echo "Updating CuriOS system..."
+  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+  reboot_check
+}
+
+# Check if current kernel and nix latest kernel generation are different
+# If yes send the user a notification to reboot.
+reboot_check() {
+  LIST_GEN=$(nixos-rebuild list-generations --json)
+  LIST_GEN_KERNEL=$(echo "$LIST_GEN" | jq -r '.[0].kernelVersion')
+  if [[ $(uname -r) != "$LIST_GEN_KERNEL" ]]; then
+    echo -e "A new kernel was installed - ${YELLOW}You should REBOOT now${NC}."
+    # Send a notification to user with UID 1000
+    sudo -u "#1000" DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send -a "System Update" --icon="curios" --urgency=critical --expire-time=8000 "A new kernel was installed - You SHOULD reboot now!"
+  fi
 }
 
 # Upgrade the system
@@ -232,7 +261,12 @@ if [ $CHECK_ONLINE -eq 1 ]; then
   fi
 fi
 
+if [ $UPDATE_SYSTEM -eq 1 ]; then
+  update_curios
+  exit 0
+fi
+
 if [ $UPGRADABLE -eq 1 ] && [ $UPGRADE_SYSTEM -eq 1 ]; then
   upgrade_curios
-  exit 2
+  exit 0
 fi
