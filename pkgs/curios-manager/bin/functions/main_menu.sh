@@ -67,9 +67,6 @@ main_menu() {
       sudo mkdir -p "$SKEL_DIR"
       sudo curios-dotfiles --lang "$CURRENT_KEYBOARD" "$SKEL_DIR"
     fi
-    # Check if a reboot is necessary
-    #nix_generations
-    #reboot_check
     if [ $status -eq 2 ]; then
       echo -e "A new CuriOS system was installed - ${YELLOW}You should REBOOT now${NC}."
       echo -e "${BLUE}Please${NC} ensure that all other applications are properly closed."
