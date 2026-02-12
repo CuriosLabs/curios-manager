@@ -10,10 +10,10 @@ main_menu() {
   local SETTINGS_FILE
   local SETTINGS_LAST_MOD
   local SKEL_DIR
-  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Apps" " Update" " Upgrade" "󱘸 Backup" " System" " Settings (manual edit)" "? Help" " About" "󰈆 Exit")
+  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Applications" " Update" " Upgrade" "󱘸 Backup" " System" " Settings (manual edit)" "? Help" " About" "󰈆 Exit")
   #echo "Your choice is: $MAIN_MENU"
   case $MAIN_MENU in
-  "󰀻 Apps")
+  "󰀻 Applications")
     app_menu
     ;;
   " Update")
@@ -34,12 +34,6 @@ main_menu() {
     status=$?
     if [ $status -ne 0 ]; then
       echo -e "${RED}Nix flakes upgrade failed!${NC}"
-      exit 1
-    fi
-    gum spin --spinner dot --title "Running store garbage collector..." --show-error -- sudo nix-store --gc
-    status=$?
-    if [ $status -ne 0 ]; then
-      echo -e "${RED}Nix store garbage collector failed!${NC}"
       exit 1
     fi
     # Check if a reboot is necessary
@@ -67,9 +61,6 @@ main_menu() {
       sudo mkdir -p "$SKEL_DIR"
       sudo curios-dotfiles --lang "$CURRENT_KEYBOARD" "$SKEL_DIR"
     fi
-    # Check if a reboot is necessary
-    #nix_generations
-    #reboot_check
     if [ $status -eq 2 ]; then
       echo -e "A new CuriOS system was installed - ${YELLOW}You should REBOOT now${NC}."
       echo -e "${BLUE}Please${NC} ensure that all other applications are properly closed."

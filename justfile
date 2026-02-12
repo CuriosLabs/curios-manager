@@ -66,3 +66,7 @@ hash-update VERSION:
 # Launch curios-manager bash script directly (not the Nix pkgs).
 test:
   ./pkgs/curios-manager/bin/curios-manager
+
+# Launch curios-update bash script directly (not the Nix pkgs).
+test-update *FLAGS:
+  ./pkgs/curios-manager/bin/curios-update {{FLAGS}}
