@@ -16,6 +16,7 @@ pkgs.mkShell {
     libnotify
     libsecret
     ncdu
+    nix-search-cli
     #nvtopPackages.full
     restic
     smartmontools

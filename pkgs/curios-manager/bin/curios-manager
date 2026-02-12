@@ -105,6 +105,10 @@ if ! available ncdu; then
   echo -e "${RED}ncdu command not found!${NC}"
   exit 2
 fi
+if ! available nix-search; then
+  echo -e "${RED}nix-search command not found!${NC}"
+  exit 2
+fi
 # Get current OS version
 if [ ! -f /etc/os-release ]; then
   echo -e "${RED}/etc/os-release file not found!${NC}"

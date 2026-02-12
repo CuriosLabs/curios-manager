@@ -10,10 +10,10 @@ main_menu() {
   local SETTINGS_FILE
   local SETTINGS_LAST_MOD
   local SKEL_DIR
-  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Apps" " Update" " Upgrade" "󱘸 Backup" " System" " Settings (manual edit)" "? Help" " About" "󰈆 Exit")
+  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Applications" " Update" " Upgrade" "󱘸 Backup" " System" " Settings (manual edit)" "? Help" " About" "󰈆 Exit")
   #echo "Your choice is: $MAIN_MENU"
   case $MAIN_MENU in
-  "󰀻 Apps")
+  "󰀻 Applications")
     app_menu
     ;;
   " Update")
