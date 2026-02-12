@@ -55,7 +55,7 @@ ${GREY}EXAMPLES:${NC}
 }
 
 #------------- var init state
-readonly SCRIPT_VERSION="0.12"
+readonly SCRIPT_VERSION="0.13"
 VERBOSE=0
 CHECK_ONLINE=0
 UPDATE_SYSTEM=0
@@ -183,10 +183,6 @@ reboot_check() {
 # Upgrade the system
 upgrade_curios() {
   local extracted_source_path=""
-
-  #echo -e "${YELLOW}WARNING: This upgrade process does not verify the integrity of the downloaded source code.${NC}"
-  #echo -e "${YELLOW}This is a security risk if the source repository is compromised.${NC}"
-  #gum confirm "Continue with the upgrade?" || exit 0
 
   echo -e "${GREEN}Downloading ${LATEST_VERSION} sources...${NC}"
   wget -O "${TMP_DIR}/CuriOS-${LATEST_VERSION}".tar.gz --show-progress "$LATEST_SOURCE"
