@@ -110,6 +110,9 @@ curios_apps_menu() {
       display="$display - $description"
     fi
 
+    # Replace commas in display name to avoid breaking gum choose --selected
+    display="${display//,/;}"
+
     GUM_OPTIONS+=("$display")
     [ "$status" == "true" ] && GUM_SELECTED+=("$display")
     DISPLAY_TO_PATH["$display"]="$path_arr"
