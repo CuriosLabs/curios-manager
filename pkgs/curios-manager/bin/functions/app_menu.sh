@@ -52,7 +52,7 @@ search_new_package() {
 }
 
 curios_apps_menu() {
-  local SETTINGS_FILE="/etc/nixos/settings.json"
+  local SETTINGS_FILE="/etc/nixos/modules.json"
   if [ ! -f "$SETTINGS_FILE" ]; then
     echo -e "${RED}Settings file $SETTINGS_FILE not found!${NC}"
     return
@@ -161,8 +161,8 @@ curios_apps_menu() {
     echo -e "${BLUE}Saving settings to $SETTINGS_FILE...${NC}"
     if jq "$jq_cmd" "$SETTINGS_FILE" | sudo tee "$SETTINGS_FILE" >/dev/null; then
       echo -e "${GREEN}Settings updated!${NC}"
-      #gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --cores 0 --max-jobs auto
-      #reboot_check
+      gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --cores 0 --max-jobs auto
+      reboot_check
     else
       echo -e "${RED}Failed to update $SETTINGS_FILE!${NC}"
     fi
