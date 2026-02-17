@@ -85,7 +85,7 @@ curios_apps_menu() {
     path_arr=$(echo "$item" | jq -c '.path')
     status=$(echo "$item" | jq -r '.status')
     dot_path=$(echo "$item" | jq -r '.path | join(".")')
-    description=$(nixos-option curios."$dot_path" | sed -n '/^Description:$/{n;p}' | xargs)
+    description=$(nixos-option curios."$dot_path" 2>/dev/null | sed -n '/^Description:$/{n;p}' | xargs)
 
     # Format the display name: (category) setting
     # If the path ends in .enable, we strip it to show the app name as the setting
