@@ -72,52 +72,58 @@ curios_apps_menu() {
   declare -A DISPLAY_TO_PATH
   declare -A DISPLAY_TO_STATUS
 
-  local item
-  local path_arr
-  local status
-  local description
-  local dot_path
-  local category
-  local setting
-  local display
+  # Helper function to fetch app details, exported for gum spin subshell
+  # shellcheck disable=SC2329
+  _curios_fetch_apps_data() {
+    local item
+    while read -r item; do
+      local path_arr status dot_path description category setting display
+      path_arr=$(echo "$item" | jq -c '.path')
+      status=$(echo "$item" | jq -r '.status')
+      dot_path=$(echo "$item" | jq -r '.path | join(".")')
+      description=$(nixos-option curios."$dot_path" 2>/dev/null | sed -n '/^Description:$/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
-  while read -r item; do
-    path_arr=$(echo "$item" | jq -c '.path')
-    status=$(echo "$item" | jq -r '.status')
-    dot_path=$(echo "$item" | jq -r '.path | join(".")')
-    description=$(nixos-option curios."$dot_path" 2>/dev/null | sed -n '/^Description:$/{n;p}' | xargs)
-
-    # Format the display name: (category) setting
-    # If the path ends in .enable, we strip it to show the app name as the setting
-    if [[ "$dot_path" == *".enable" ]]; then
-      local base_path="${dot_path%.enable}"
-      if [[ "$base_path" == *"."* ]]; then
-        category="${base_path%.*}"
-        setting="${base_path##*.}"
+      # Format the display name: (category) setting
+      # If the path ends in .enable, we strip it to show the app name as the setting
+      if [[ "$dot_path" == *".enable" ]]; then
+        local base_path="${dot_path%.enable}"
+        if [[ "$base_path" == *"."* ]]; then
+          category="${base_path%.*}"
+          setting="${base_path##*.}"
+          display="($category) $setting"
+        else
+          display="$base_path"
+        fi
+      elif [[ "$dot_path" == *"."* ]]; then
+        category="${dot_path%.*}"
+        setting="${dot_path##*.}"
         display="($category) $setting"
       else
-        display="$base_path"
+        display="$dot_path"
       fi
-    elif [[ "$dot_path" == *"."* ]]; then
-      category="${dot_path%.*}"
-      setting="${dot_path##*.}"
-      display="($category) $setting"
-    else
-      display="$dot_path"
-    fi
 
-    if [ -n "$description" ] && [ "$description" != "null" ]; then
-      display="$display - $description"
-    fi
+      if [ -n "$description" ] && [ "$description" != "null" ]; then
+        display="$display - $description"
+      fi
 
-    # Replace commas in display name to avoid breaking gum choose --selected
-    display="${display//,/;}"
+      # Replace commas in display name to avoid breaking gum choose --selected
+      display="${display//,/;}"
 
+      echo "$display|$path_arr|$status"
+    done
+  }
+  export -f _curios_fetch_apps_data
+
+  local FETCHED_ITEMS
+  FETCHED_ITEMS=$(gum spin --spinner dot --title "Loading CuriOS Apps configuration..." -- bash -c "_curios_fetch_apps_data" <<<"$BOOLS_DATA")
+
+  while IFS='|' read -r display path_arr status; do
+    [ -z "$display" ] && continue
     GUM_OPTIONS+=("$display")
     [ "$status" == "true" ] && GUM_SELECTED+=("$display")
     DISPLAY_TO_PATH["$display"]="$path_arr"
     DISPLAY_TO_STATUS["$display"]="$status"
-  done <<<"$BOOLS_DATA"
+  done <<<"$FETCHED_ITEMS"
 
   local SELECTED_STR
   SELECTED_STR=$(
