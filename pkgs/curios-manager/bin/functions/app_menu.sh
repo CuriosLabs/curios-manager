@@ -60,7 +60,7 @@ curios_apps_menu() {
 
   # 1. Read all boolean paths and their current values
   local BOOLS_DATA
-  BOOLS_DATA=$(jq -c 'paths(type == "boolean") as $p | {path: $p, status: getpath($p), description: (getpath($p[:-1]) | .description // "")}' "$SETTINGS_FILE" 2>/dev/null)
+  BOOLS_DATA=$(jq -c 'paths(type == "boolean") as $p | {path: $p, status: getpath($p)}' "$SETTINGS_FILE" 2>/dev/null)
 
   if [ -z "$BOOLS_DATA" ]; then
     echo -e "${YELLOW}No configurable boolean settings found in $SETTINGS_FILE.${NC}"
@@ -84,8 +84,8 @@ curios_apps_menu() {
   while read -r item; do
     path_arr=$(echo "$item" | jq -c '.path')
     status=$(echo "$item" | jq -r '.status')
-    description=$(echo "$item" | jq -r '.description')
     dot_path=$(echo "$item" | jq -r '.path | join(".")')
+    description=$(nixos-option curios."$dot_path" | sed -n '/^Description:$/{n;p}' | xargs)
 
     # Format the display name: (category) setting
     # If the path ends in .enable, we strip it to show the app name as the setting
