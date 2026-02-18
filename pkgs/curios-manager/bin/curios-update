@@ -55,7 +55,7 @@ ${GREY}EXAMPLES:${NC}
 }
 
 #------------- var init state
-readonly SCRIPT_VERSION="0.14"
+readonly SCRIPT_VERSION="0.15"
 VERBOSE=0
 CHECK_ONLINE=0
 UPDATE_SYSTEM=0
@@ -165,6 +165,7 @@ update_curios() {
   nix-collect-garbage --delete-older-than 7d
   echo "Updating CuriOS system..."
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+  nix profile upgrade --all
   reboot_check
 }
 

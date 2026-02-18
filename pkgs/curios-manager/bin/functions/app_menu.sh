@@ -168,6 +168,7 @@ curios_apps_menu() {
     if jq "$jq_cmd" "$SETTINGS_FILE" | sudo tee "$SETTINGS_FILE" >/dev/null; then
       echo -e "${GREEN}Settings updated!${NC}"
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --cores 0 --max-jobs auto
+      gum spin --spinner dot --title "Upgrading nix flakes..." --show-error -- nix profile upgrade --all
       reboot_check
     else
       echo -e "${RED}Failed to update $SETTINGS_FILE!${NC}"
