@@ -151,7 +151,7 @@ fi
 # check online latest version
 get_latest_version() {
   if [ $VERBOSE -eq 1 ]; then
-    echo "Checking github sources..."
+    echo -e "${BLUE}Checking github sources...${NC}"
   fi
   local LATEST_INFO
   LATEST_INFO=$(curl -f -L --silent "https://api.github.com/repos/CuriosLabs/CuriOS/tags" | jq -r '.[0]')
@@ -161,10 +161,11 @@ get_latest_version() {
 
 # Update Nix packages, system, collect garbage
 update_curios() {
-  echo "Launching Nix garbage collection..."
+  echo -e "${GREEN}Launching Nix garbage collection...${NC}"
   nix-collect-garbage --delete-older-than 7d
-  echo "Updating CuriOS system..."
+  echo -e "${GREEN}Updating CuriOS system...${NC}"
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+  echo -e "${GREEN}Updating Nix flakes...${NC}"
   nix profile upgrade --all
   reboot_check
 }
