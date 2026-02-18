@@ -39,6 +39,7 @@ usage() {
 ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}         Print this message.
   ${GREY}--check${NC}            Check online if a most recent version of CuriOS exist.
+  ${GREY}--export${NC}           Export current CuriOS modules configuration to /etc/nixos/modules.json.
   ${GREY}--update${NC}           Update installed packages, do a Nix collect garbage, warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}          Download latest CuriOS and install it. Implies --check option.
   ${GREY}-v, --verbose${NC}      Print more information.
@@ -47,6 +48,8 @@ ${GREY}OPTIONS:${NC}
 ${GREY}EXAMPLES:${NC}
   Check online for the latest CuriOS version:
     ${GREY}curios-update --check${NC}
+  Export current modules configuration:
+    ${GREY}sudo curios-update --export${NC}
   Upgrade whole system to latest version:
     ${GREY}sudo curios-update --upgrade${NC}
   Update installed packages, Nix garbage collect:
@@ -58,6 +61,7 @@ ${GREY}EXAMPLES:${NC}
 readonly SCRIPT_VERSION="0.15"
 VERBOSE=0
 CHECK_ONLINE=0
+EXPORT_MODULES=0
 UPDATE_SYSTEM=0
 UPGRADE_SYSTEM=0
 UPGRADABLE=0
@@ -67,7 +71,7 @@ NIX_CHANNEL_URL=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,update,upgrade" --options ":hv" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,update,upgrade" --options ":hv" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -85,6 +89,10 @@ while true; do
     ;;
   --check)
     CHECK_ONLINE=1
+    shift
+    ;;
+  --export)
+    EXPORT_MODULES=1
     shift
     ;;
   --update)
@@ -114,8 +122,8 @@ if [ $VERBOSE -eq 1 ]; then
   echo "Script current path: ${SCRIPT_PATH}"
 fi
 
-# This script must be run as root for --upgrade option
-if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 ]]; then
+# This script must be run as root for --upgrade, --update and --export option
+if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 ]]; then
   echo -e "${RED}This script MUST be run as root: sudo curios-update --upgrade${NC}" >&2
   exit 1
 fi
@@ -145,6 +153,14 @@ if ! available tar; then
 fi
 if ! available fd; then
   echo -e "${RED}fd command not found!${NC}"
+  exit 1
+fi
+if ! available nixos-option; then
+  echo -e "${RED}nixos-option command not found!${NC}"
+  exit 1
+fi
+if ! available nix-instantiate; then
+  echo -e "${RED}nix-instantiate command not found!${NC}"
   exit 1
 fi
 
@@ -182,9 +198,40 @@ reboot_check() {
   fi
 }
 
+# Export all NixOS options values from 'curios' to a JSON file
+export_curios_modules() {
+  echo -e "${GREEN}Exporting CuriOS modules to /etc/nixos/modules.json...${NC}"
+  # Get all curios options, remove 'curios.' prefix, filter out errors and derivations
+  # then wrap in a nix attribute set and convert to JSON using nix-instantiate
+  if ! nixos-option -r curios >/dev/null 2>&1; then
+    echo -e "${YELLOW}Warning: 'curios' option set not found. Skipping export.${NC}"
+    return
+  fi
+
+  # Backup existing file if it exists
+  if [ -f /etc/nixos/modules.json ]; then
+    local backup_file
+    backup_file="/etc/nixos/modules.json.$(date +%Y%m%d_%H%M%S).bak"
+    cp /etc/nixos/modules.json "$backup_file"
+    echo -e "${BLUE}Backup created: ${backup_file}${NC}"
+  fi
+
+  nixos-option -r curios 2>/dev/null |
+    sed 's/^curios\.//' |
+    (
+      echo "{"
+      cat
+      echo "}"
+    ) |
+    nix-instantiate --eval --strict --json - >/etc/nixos/modules.json ||
+    echo -e "${RED}Error: Failed to export CuriOS modules to JSON.${NC}"
+}
+
 # Upgrade the system
 upgrade_curios() {
   local extracted_source_path=""
+
+  export_curios_modules
 
   echo -e "${GREEN}Downloading ${LATEST_VERSION} sources...${NC}"
   wget -O "${TMP_DIR}/CuriOS-${LATEST_VERSION}".tar.gz --show-progress "$LATEST_SOURCE"
@@ -198,7 +245,6 @@ upgrade_curios() {
   fi
 
   # Installing
-  # TODO: copy current configuration values with `nixos-option curios.* | sed -n '/^Value:$/{n;p}' | xargs` into the new settings.nix
   echo -e "${GREEN}Installing update...${NC}"
   install -D -m 644 -t /etc/nixos/ "$extracted_source_path"/configuration.nix
   if [ ! -f /etc/nixos/settings.nix ]; then
@@ -270,6 +316,11 @@ fi
 
 if [ $UPDATE_SYSTEM -eq 1 ]; then
   update_curios
+  exit 0
+fi
+
+if [ $EXPORT_MODULES -eq 1 ]; then
+  export_curios_modules
   exit 0
 fi
 
