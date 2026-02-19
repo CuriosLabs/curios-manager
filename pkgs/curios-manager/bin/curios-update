@@ -201,7 +201,7 @@ reboot_check() {
 # Export all NixOS options values from 'curios' to a JSON file
 export_curios_modules() {
   echo -e "${GREEN}Exporting CuriOS modules to /etc/nixos/modules.json...${NC}"
-  # Get all curios options, remove 'curios.' prefix, filter out errors and derivations
+  # Get all curios options, filter out errors and derivations
   # then wrap in a nix attribute set and convert to JSON using nix-instantiate
   if ! nixos-option -r curios >/dev/null 2>&1; then
     echo -e "${YELLOW}Warning: 'curios' option set not found. Skipping export.${NC}"
@@ -216,14 +216,9 @@ export_curios_modules() {
     echo -e "${BLUE}Backup created: ${backup_file}${NC}"
   fi
 
-  nixos-option -r curios 2>/dev/null |
-    sed 's/^curios\.//' |
-    (
-      echo "{"
-      cat
-      echo "}"
-    ) |
-    nix-instantiate --eval --strict --json - >/etc/nixos/modules.json ||
+  local curios_current_options=""
+  curios_current_options=$(nixos-option -r curios 2>/dev/null)
+  echo "{$curios_current_options}" | nix-instantiate --eval --strict --json - >/etc/nixos/modules.json ||
     echo -e "${RED}Error: Failed to export CuriOS modules to JSON.${NC}"
 }
 
