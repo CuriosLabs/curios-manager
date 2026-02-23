@@ -54,8 +54,10 @@ search_new_package() {
 curios_apps_menu() {
   local SETTINGS_FILE="/etc/nixos/modules.json"
   if [ ! -f "$SETTINGS_FILE" ]; then
-    echo -e "${RED}Settings file $SETTINGS_FILE not found!${NC}"
-    return
+    echo -e "${YELLOW}Settings file $SETTINGS_FILE not found!${NC}"
+    echo -e "${YELLOW}Creating a new one...${NC}"
+    sudo curios-update --export
+    #sudo ./pkgs/curios-manager/bin/curios-update --export
   fi
 
   # 1. Read all boolean paths and their current values
@@ -63,7 +65,7 @@ curios_apps_menu() {
   BOOLS_DATA=$(jq -c 'paths(type == "boolean") as $p | {path: $p, status: getpath($p)}' "$SETTINGS_FILE" 2>/dev/null)
 
   if [ -z "$BOOLS_DATA" ]; then
-    echo -e "${YELLOW}No configurable boolean settings found in $SETTINGS_FILE.${NC}"
+    echo -e "${YELLOW}No configurable boolean settings found in $SETTINGS_FILE${NC}"
     return
   fi
 

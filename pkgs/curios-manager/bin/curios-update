@@ -200,7 +200,7 @@ reboot_check() {
 
 # Export all NixOS options values from 'curios' to a JSON file
 export_curios_modules() {
-  echo -e "${GREEN}Exporting CuriOS modules to /etc/nixos/modules.json...${NC}"
+  echo -e "${GREEN}Exporting CuriOS modules to /etc/nixos/modules.json${NC}"
   # Get all curios options, filter out errors and derivations
   # then wrap in a nix attribute set and convert to JSON using nix-instantiate
   if ! nixos-option -r curios >/dev/null 2>&1; then
@@ -249,10 +249,6 @@ upgrade_curios() {
   if [ ! -f /etc/nixos/modules.json ]; then
     install -D -m 644 -t /etc/nixos/ "$extracted_source_path"/modules.json
     echo -e "${YELLOW}Default modules.json file installed!${NC} Edit /etc/nixos/modules.json to match your installed CuriOS applications."
-  fi
-  if [ ! -f /etc/nixos/hardened.json ]; then
-    install -D -m 644 -t /etc/nixos/ "$extracted_source_path"/hardened.json
-    echo -e "${YELLOW}Default hardened.json file installed!${NC} Edit /etc/nixos/hardened.json with caution."
   fi
   if [ ! -f "$extracted_source_path"/logo.txt ]; then
     install -D -m 644 -t /etc/nixos/ "$extracted_source_path"/logo.txt
