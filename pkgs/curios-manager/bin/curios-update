@@ -267,8 +267,10 @@ upgrade_curios() {
   fi
   # Updating system
   echo -e "${YELLOW}Updating packages...${NC}"
-  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+  # Updating /etc/nixos/modules.json
   export_curios_modules
+  # Updating whole system
+  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
   echo -e "${GREEN}Done.${NC}"
 }
 
