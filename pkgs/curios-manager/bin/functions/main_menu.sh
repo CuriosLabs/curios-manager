@@ -45,7 +45,7 @@ main_menu() {
     DOTFILES_VERSION=$(curios-dotfiles --version)
     HOME_DIR="/home/*/"
     SKEL_DIR="/etc/skel/"
-    CURRENT_KEYBOARD=$(grep -oP 'keyboard\s*=\s*"\K[^"]+' /etc/nixos/settings.nix)
+    CURRENT_KEYBOARD=$(nixos-option curios.system.keyboard | sed -n '/^Value:/{n;p;}' | tr -d '" ')
     sudo curios-update --upgrade
     status=$?
     # Updating dotfiles
