@@ -17,6 +17,7 @@ pkgs.mkShell {
     libsecret
     ncdu
     nix-search-cli
+    nixos-option
     #nvtopPackages.full
     restic
     smartmontools

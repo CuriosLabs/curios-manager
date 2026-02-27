@@ -28,6 +28,7 @@ stdenvNoCC.mkDerivation rec {
     pkgs.libsecret
     pkgs.ncdu
     pkgs.nix-search-cli
+    pkgs.nixos-option
     #pkgs.nvtopPackages.full
     pkgs.restic
     pkgs.smartmontools
