@@ -39,7 +39,7 @@ usage() {
 ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}         Print this message.
   ${GREY}--check${NC}            Check online if a most recent version of CuriOS exist.
-  ${GREY}--export${NC}           Export current CuriOS modules configuration to /etc/nixos/modules.json.
+  ${GREY}--export${NC}           Export current CuriOS modules configuration to /etc/nixos/modules.json
   ${GREY}--update${NC}           Update installed packages, do a Nix collect garbage, warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}          Download latest CuriOS and install it. Implies --check option.
   ${GREY}-v, --verbose${NC}      Print more information.
@@ -58,7 +58,7 @@ ${GREY}EXAMPLES:${NC}
 }
 
 #------------- var init state
-readonly SCRIPT_VERSION="0.15"
+readonly SCRIPT_VERSION="0.16"
 VERBOSE=0
 CHECK_ONLINE=0
 EXPORT_MODULES=0
@@ -120,6 +120,7 @@ done
 
 if [ $VERBOSE -eq 1 ]; then
   echo "Script current path: ${SCRIPT_PATH}"
+  echo "PATH: $PATH"
 fi
 
 # This script must be run as root for --upgrade, --update and --export option
@@ -159,10 +160,10 @@ if ! available nixos-option; then
   echo -e "${RED}nixos-option command not found!${NC}"
   exit 1
 fi
-if ! available nix-instantiate; then
-  echo -e "${RED}nix-instantiate command not found!${NC}"
-  exit 1
-fi
+#if ! available nix-instantiate; then
+#  echo -e "${RED}nix-instantiate command not found!${NC}"
+#  exit 1
+#fi
 
 # check online latest version
 get_latest_version() {
@@ -218,7 +219,7 @@ export_curios_modules() {
 
   local curios_current_options=""
   curios_current_options=$(nixos-option -r curios 2>/dev/null)
-  echo "{$curios_current_options}" | nix-instantiate --eval --strict --json - >/etc/nixos/modules.json ||
+  echo "{$curios_current_options}" | /run/current-system/sw/bin/nix-instantiate --eval --strict --json - >/etc/nixos/modules.json ||
     echo -e "${RED}Error: Failed to export CuriOS modules to JSON.${NC}"
 }
 
