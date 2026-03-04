@@ -35,7 +35,7 @@ publish VERSION:
 tag VERSION:
   @echo "Updating version number to {{VERSION}}..."
   sed "s/version = \".*/version = \"{{VERSION}}\";/g" -i ./pkgs/curios-manager/default.nix
-  sed "s/hash = \".*/hash = \"\";/g" -i ./pkgs/curios-manager/default.nix
+  sed "s#hash = \".*#hash = \"\";#g" -i ./pkgs/curios-manager/default.nix
   sed "s/readonly SCRIPT_VERSION=\".*/readonly SCRIPT_VERSION=\"{{VERSION}}\"/g" -i ./pkgs/curios-manager/bin/constants.sh
   git commit -a -m "Release {{VERSION}}"
   git pull
@@ -59,7 +59,7 @@ hash-update VERSION:
   set -euxo pipefail
   sed "s/version = \".*/version = \"{{VERSION}}\";/g" -i ./pkgs/curios-manager/default.nix
   HASH=`nix --extra-experimental-features nix-command hash convert --hash-algo sha256 "$(nix-prefetch-url --unpack https://github.com/{{owner}}/{{name}}/archive/{{VERSION}}.tar.gz)"`
-  sed "s/hash = \".*/hash = \"${HASH}\";/g" -i ./pkgs/curios-manager/default.nix
+  sed "s#hash = \".*#hash = \"${HASH}\";#g" -i ./pkgs/curios-manager/default.nix
   git commit -a -m "Updated hash signature"
   git push
 

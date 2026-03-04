@@ -30,7 +30,7 @@ main_menu() {
       echo -e "${RED}Nix packages upgrade failed!${NC}"
       exit 1
     fi
-    gum spin --spinner dot --title "Upgrading nix flakes..." --show-error -- nix profile upgrade --all
+    gum spin --spinner dot --title "Upgrading Nix flakes..." --show-error -- nix profile upgrade --all
     status=$?
     if [ $status -ne 0 ]; then
       echo -e "${RED}Nix flakes upgrade failed!${NC}"
@@ -45,7 +45,7 @@ main_menu() {
     DOTFILES_VERSION=$(curios-dotfiles --version)
     HOME_DIR="/home/*/"
     SKEL_DIR="/etc/skel/"
-    CURRENT_KEYBOARD=$(grep -oP 'keyboard\s*=\s*"\K[^"]+' /etc/nixos/settings.nix)
+    CURRENT_KEYBOARD=$(nixos-option curios.system.keyboard | sed -n '/^Value:/{n;p;}' | tr -d '" ')
     sudo curios-update --upgrade
     status=$?
     # Updating dotfiles

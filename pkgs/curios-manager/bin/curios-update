@@ -39,6 +39,7 @@ usage() {
 ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}         Print this message.
   ${GREY}--check${NC}            Check online if a most recent version of CuriOS exist.
+  ${GREY}--export${NC}           Export current CuriOS modules configuration to /etc/nixos/modules.json
   ${GREY}--update${NC}           Update installed packages, do a Nix collect garbage, warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}          Download latest CuriOS and install it. Implies --check option.
   ${GREY}-v, --verbose${NC}      Print more information.
@@ -47,6 +48,8 @@ ${GREY}OPTIONS:${NC}
 ${GREY}EXAMPLES:${NC}
   Check online for the latest CuriOS version:
     ${GREY}curios-update --check${NC}
+  Export current modules configuration:
+    ${GREY}sudo curios-update --export${NC}
   Upgrade whole system to latest version:
     ${GREY}sudo curios-update --upgrade${NC}
   Update installed packages, Nix garbage collect:
@@ -55,9 +58,10 @@ ${GREY}EXAMPLES:${NC}
 }
 
 #------------- var init state
-readonly SCRIPT_VERSION="0.13"
+readonly SCRIPT_VERSION="0.16"
 VERBOSE=0
 CHECK_ONLINE=0
+EXPORT_MODULES=0
 UPDATE_SYSTEM=0
 UPGRADE_SYSTEM=0
 UPGRADABLE=0
@@ -67,7 +71,7 @@ NIX_CHANNEL_URL=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,update,upgrade" --options ":hv" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,update,upgrade" --options ":hv" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -85,6 +89,10 @@ while true; do
     ;;
   --check)
     CHECK_ONLINE=1
+    shift
+    ;;
+  --export)
+    EXPORT_MODULES=1
     shift
     ;;
   --update)
@@ -112,10 +120,11 @@ done
 
 if [ $VERBOSE -eq 1 ]; then
   echo "Script current path: ${SCRIPT_PATH}"
+  echo "PATH: $PATH"
 fi
 
-# This script must be run as root for --upgrade option
-if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 ]]; then
+# This script must be run as root for --upgrade, --update and --export option
+if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 ]]; then
   echo -e "${RED}This script MUST be run as root: sudo curios-update --upgrade${NC}" >&2
   exit 1
 fi
@@ -147,11 +156,19 @@ if ! available fd; then
   echo -e "${RED}fd command not found!${NC}"
   exit 1
 fi
+if ! available nixos-option; then
+  echo -e "${RED}nixos-option command not found!${NC}"
+  exit 1
+fi
+#if ! available nix-instantiate; then
+#  echo -e "${RED}nix-instantiate command not found!${NC}"
+#  exit 1
+#fi
 
 # check online latest version
 get_latest_version() {
   if [ $VERBOSE -eq 1 ]; then
-    echo "Checking github sources..."
+    echo -e "${BLUE}Checking github sources...${NC}"
   fi
   local LATEST_INFO
   LATEST_INFO=$(curl -f -L --silent "https://api.github.com/repos/CuriosLabs/CuriOS/tags" | jq -r '.[0]')
@@ -161,10 +178,12 @@ get_latest_version() {
 
 # Update Nix packages, system, collect garbage
 update_curios() {
-  echo "Launching Nix garbage collection..."
+  echo -e "${GREEN}Launching Nix garbage collection...${NC}"
   nix-collect-garbage --delete-older-than 7d
-  echo "Updating CuriOS system..."
+  echo -e "${GREEN}Updating CuriOS system...${NC}"
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+  echo -e "${GREEN}Updating Nix flakes...${NC}"
+  nix profile upgrade --all
   reboot_check
 }
 
@@ -178,6 +197,30 @@ reboot_check() {
     # Send a notification to user with UID 1000
     sudo -u "#1000" DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send -a "System Update" --icon="curios" --urgency=critical --expire-time=8000 "A new kernel was installed - You SHOULD reboot now!"
   fi
+}
+
+# Export all NixOS options values from 'curios' to a JSON file
+export_curios_modules() {
+  echo -e "${GREEN}Exporting CuriOS modules to /etc/nixos/modules.json${NC}"
+  # Get all curios options, filter out errors and derivations
+  # then wrap in a nix attribute set and convert to JSON using nix-instantiate
+  if ! nixos-option -r curios >/dev/null 2>&1; then
+    echo -e "${YELLOW}Warning: 'curios' option set not found. Skipping export.${NC}"
+    return
+  fi
+
+  # Backup existing file if it exists
+  if [ -f /etc/nixos/modules.json ]; then
+    local backup_file
+    backup_file="/etc/nixos/modules.json.$(date +%Y%m%d_%H%M%S).bak"
+    cp /etc/nixos/modules.json "$backup_file"
+    echo -e "${BLUE}Backup created: ${backup_file}${NC}"
+  fi
+
+  local curios_current_options=""
+  curios_current_options=$(nixos-option -r curios 2>/dev/null)
+  echo "{$curios_current_options}" | /run/current-system/sw/bin/nix-instantiate --eval --strict --json - >/etc/nixos/modules.json ||
+    echo -e "${RED}Error: Failed to export CuriOS modules to JSON.${NC}"
 }
 
 # Upgrade the system
@@ -225,6 +268,9 @@ upgrade_curios() {
   fi
   # Updating system
   echo -e "${YELLOW}Updating packages...${NC}"
+  # Updating /etc/nixos/modules.json
+  export_curios_modules
+  # Updating whole system
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
   echo -e "${GREEN}Done.${NC}"
 }
@@ -259,6 +305,11 @@ fi
 
 if [ $UPDATE_SYSTEM -eq 1 ]; then
   update_curios
+  exit 0
+fi
+
+if [ $EXPORT_MODULES -eq 1 ]; then
+  export_curios_modules
   exit 0
 fi
 
