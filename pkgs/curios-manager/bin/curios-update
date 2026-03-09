@@ -227,6 +227,9 @@ export_curios_modules() {
 upgrade_curios() {
   local extracted_source_path=""
 
+  echo -e "${GREEN}Launching Nix garbage collector...${NC}"
+  nix-store --gc
+
   echo -e "${GREEN}Downloading ${LATEST_VERSION} sources...${NC}"
   wget -O "${TMP_DIR}/CuriOS-${LATEST_VERSION}".tar.gz --show-progress "$LATEST_SOURCE"
   mkdir -p "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ && tar -C "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ -xzf "${TMP_DIR}/CuriOS-${LATEST_VERSION}".tar.gz
