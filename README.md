@@ -5,7 +5,7 @@
 
 A modern TUI to control your [CuriOS](https://github.com/CuriosLabs/CuriOS) system.
 
-![CuriOS Manager TUI](https://github.com/CuriosLabs/CuriOS/blob/testing/img/CuriOS-manager.png?raw=true "CuriOS manager")
+![CuriOS Manager TUI](https://github.com/CuriosLabs/CuriOS/blob/master/img/curios-manager_main-menu.png?raw=true "CuriOS manager")
 
 -----
 
