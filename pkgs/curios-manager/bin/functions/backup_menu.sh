@@ -71,7 +71,11 @@ backup_setup() {
     export RESTIC_PASSWORD_COMMAND="secret-tool lookup restic password"
   fi
 
-  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" " Local (USB)" "󰸏 S3 server (Amazon AWS)" " S3-compatible server (MinIO, RustFS...)" " Back")
+  BACKUP_SETUP_MENU=$(gum choose --header "Choose a backup repository type:" \
+    " Local (USB)" \
+    "󰸏 S3 server (Amazon AWS)" \
+    " S3-compatible server (MinIO, RustFS...)" \
+    " Back")
   case $BACKUP_SETUP_MENU in
   " Local (USB)")
     # List USB drive mounted
@@ -313,7 +317,14 @@ backup_menu() {
     } >>"$backup_exclude_file"
   fi
 
-  BACKUP_MENU=$(gum choose --header "Backing up your HOME directory - Select an option:" "󱘸 Backup now" "󱘪 Restore from backup" "󱤢 Backup stats" "󱤢 Backup files explorer" " Setup your backup" "󰂮 Edit exclude rules" " Back")
+  BACKUP_MENU=$(gum choose --header "Backing up your HOME directory - Select an option:" \
+    "󱘸 Backup now" \
+    "󱘪 Restore from backup" \
+    "󱤢 Backup stats" \
+    "󱤢 Backup files explorer" \
+    " Setup your backup" \
+    "󰂮 Edit exclude rules" \
+    " Back")
   case $BACKUP_MENU in
   "󱘸 Backup now")
     if [[ ! -v RESTIC_REPOSITORY ]]; then

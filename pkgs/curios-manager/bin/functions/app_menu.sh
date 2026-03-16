@@ -183,7 +183,13 @@ curios_apps_menu() {
 #------------- Apps menu
 app_menu() {
   local APP_MENU
-  APP_MENU=$(gum choose --header "Select an option:" "󰄬 Install/Uninstall CuriOS Apps" " Find/Add a NixOS package" "󰣆 Applications menu" "󱓞 Launcher" " Open Flatpak Store" " Back")
+  APP_MENU=$(gum choose --header "Select an option:" \
+    "󰄬 Install/Uninstall CuriOS Apps" \
+    " Find/Add a NixOS package" \
+    "󰣆 Applications menu" \
+    "󱓞 Launcher" \
+    " Open Flatpak Store" \
+    " Back")
   case $APP_MENU in
   " Find/Add a NixOS package")
     search_new_package

@@ -13,6 +13,7 @@ source "${__dir}/functions/backup_menu.sh"
 source "${__dir}/functions/disk_menu.sh"
 source "${__dir}/functions/help_menu.sh"
 source "${__dir}/functions/system_menu.sh"
+source "${__dir}/functions/themes_menu.sh"
 source "${__dir}/functions/main_menu.sh"
 
 #------------- Print help function

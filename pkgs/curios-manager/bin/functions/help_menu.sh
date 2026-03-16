@@ -3,7 +3,14 @@
 #------------- Help menu
 help_menu() {
   local HELP_MENU
-  HELP_MENU=$(gum choose --header "Open a new browser window with:" " Shortcuts" "󰄄 CuriOS" "󰄄 CuriOS - report a bug" " NixOS Wiki" " NixOS forum" " NixOS manual" " Back")
+  HELP_MENU=$(gum choose --header "Open a new browser window with:" \
+    " Shortcuts" \
+    "󰄄 CuriOS" \
+    "󰄄 CuriOS - report a bug" \
+    " NixOS Wiki" \
+    " NixOS forum" \
+    " NixOS manual" \
+    " Back")
   case $HELP_MENU in
   " Shortcuts")
     cosmic-settings keyboard 2>/dev/null
