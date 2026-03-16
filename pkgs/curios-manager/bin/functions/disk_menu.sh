@@ -3,7 +3,11 @@
 #------------- Disk menu
 disk_menu() {
   local APP_MENU
-  APP_MENU=$(gum choose --header "Select an option:" "󰋊 Disk usage" "󰋜 Home folder usage" " Root folder usage" "󰋊 Disk S.M.A.R.T health status" " Back")
+  APP_MENU=$(gum choose --header "Select an option:" "󰋊 Disk usage" \
+    "󰋜 Home folder usage" \
+    " Root folder usage" \
+    "󰋊 Disk S.M.A.R.T health status" \
+    " Back")
   case $APP_MENU in
   "󰋊 Disk usage")
     duf -only-mp "/,/boot,/home"

@@ -3,7 +3,14 @@
 #------------- System menu
 system_menu() {
   local SYSTEM_MENU
-  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" "󱃶 Process Management" "󱃶 Process Management (GPU)" "󰩠 Network Connections" "󰋊 Disk infos" " Firmware" " Info" " Back")
+  SYSTEM_MENU=$(gum choose " Shutdown" " Reboot" " Lock session" \
+    "󱃶 Process Management" \
+    "󱃶 Process Management (GPU)" \
+    "󰩠 Network Connections" \
+    "󰋊 Disk infos" \
+    " Firmware" \
+    " Info" \
+    " Back")
   case $SYSTEM_MENU in
   " Shutdown")
     #cosmic-osd shutdown

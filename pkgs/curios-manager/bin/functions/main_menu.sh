@@ -10,7 +10,16 @@ main_menu() {
   local SETTINGS_FILE
   local SETTINGS_LAST_MOD
   local SKEL_DIR
-  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Applications" " Update" " Upgrade" "󱘸 Backup" " System" " Settings (manual edit)" "? Help" " About" "󰈆 Exit")
+  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Applications" \
+    " Update" \
+    " Upgrade" \
+    "󱘸 Backup" \
+    " System" \
+    " Settings (manual edit)" \
+    " Themes" \
+    "? Help" \
+    " About" \
+    "󰈆 Exit")
   #echo "Your choice is: $MAIN_MENU"
   case $MAIN_MENU in
   "󰀻 Applications")
@@ -84,6 +93,13 @@ main_menu() {
       nix_generations
       echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
       reboot_check
+    fi
+    ;;
+  " Themes")
+    if [ ! -d /run/current-system/sw/share/themes/curios/ ]; then
+      echo -e "${RED}Themes folder not found!${NC}"
+    else
+      themes_menu
     fi
     ;;
   "? Help")
