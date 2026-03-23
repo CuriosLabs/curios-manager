@@ -30,6 +30,37 @@ add_package_to_settings() {
   fi
 }
 
+remove_package_from_settings() {
+  local PKG="$1"
+  local SETTINGS_FILE="/etc/nixos/settings.nix"
+
+  if [ -z "$PKG" ]; then
+    return
+  fi
+
+  # Check if package is actually in the list (not commented out)
+  if ! grep -v "^[[:space:]]*#" "$SETTINGS_FILE" | grep -q "pkgs.$PKG"; then
+    echo -e "${YELLOW}Package pkgs.$PKG is not found or is commented out in $SETTINGS_FILE.${NC}"
+    return
+  fi
+
+  echo -e "${BLUE}Removing package pkgs.$PKG from $SETTINGS_FILE...${NC}"
+  # Remove the line containing pkgs.PKG. We assume it's on its own line as per add_package_to_settings.
+  if sudo sed -i "/^[[:space:]]*pkgs\.${PKG}[[:space:]]*$/d" "$SETTINGS_FILE"; then
+    echo -e "${GREEN}Package pkgs.$PKG removed from $SETTINGS_FILE${NC}"
+    gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+    status=$?
+    if [ $status -ne 0 ]; then
+      echo -e "${RED}Nix packages update failed!${NC}"
+      exit 1
+    fi
+    gum spin --spinner dot --title "Running Nix garbage collector..." --show-error -- nix-store --gc
+    reboot_check
+  else
+    echo -e "${RED}Failed to remove package pkgs.$PKG from $SETTINGS_FILE.${NC}"
+  fi
+}
+
 search_new_package() {
   echo -e "Find a package by name:"
   SEARCH_NAME=$(gum input)
@@ -49,6 +80,30 @@ search_new_package() {
 
   PKG_NAME=$(echo "$CHOSEN_PKG" | cut -f1)
   add_package_to_settings "$PKG_NAME"
+}
+
+choose_package_to_remove() {
+  local SETTINGS_FILE="/etc/nixos/settings.nix"
+
+  # Extract packages from the list (only those NOT commented out)
+  local PKGS
+  PKGS=$(sed -n '/environment.systemPackages = \[/,/\]/p' "$SETTINGS_FILE" | grep -v "^[[:space:]]*#" | grep -o "pkgs\.[a-zA-Z0-9._-]*" | sed 's/pkgs\.//' | sort -u)
+
+  if [ -z "$PKGS" ]; then
+    echo -e "${YELLOW}No custom NixOS packages found in $SETTINGS_FILE.${NC}"
+    return
+  fi
+
+  local CHOSEN_PKG
+  CHOSEN_PKG=$(echo "$PKGS" | gum choose --limit=1 --header "Choose a package to remove:")
+
+  if [ -z "$CHOSEN_PKG" ]; then
+    return
+  fi
+
+  if gum confirm "Are you sure you want to remove pkgs.$CHOSEN_PKG?"; then
+    remove_package_from_settings "$CHOSEN_PKG"
+  fi
 }
 
 curios_apps_menu() {
@@ -186,6 +241,7 @@ app_menu() {
   APP_MENU=$(gum choose --header "Select an option:" \
     "󰄬 Install/Uninstall CuriOS Apps" \
     " Find/Add a NixOS package" \
+    "󱎘 Remove a NixOS package" \
     "󰣆 Applications menu" \
     "󱓞 Launcher" \
     " Open Flatpak Store" \
@@ -193,6 +249,10 @@ app_menu() {
   case $APP_MENU in
   " Find/Add a NixOS package")
     search_new_package
+    app_menu
+    ;;
+  "󱎘 Remove a NixOS package")
+    choose_package_to_remove
     app_menu
     ;;
   "󰄬 Install/Uninstall CuriOS Apps")
