@@ -45,7 +45,7 @@ ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}         Print this message.
   ${GREY}--check${NC}            Check online if a most recent version of CuriOS exist.
   ${GREY}--export${NC}           Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
-  ${GREY}--show-modules${NC}     Print current CuriOS modules configuration.
+  ${GREY}--show-modules${NC}     Print current CuriOS modules configuration from '$CURIOS_MODULES_FILE'.
   ${GREY}--update${NC}           Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}          Download latest CuriOS system and install it. Implies --check option.
   ${GREY}-v, --verbose${NC}      Print more information.
@@ -61,7 +61,7 @@ ${GREY}EXAMPLES:${NC}
   Upgrade whole system to latest version:
     ${GREY}sudo curios-update --upgrade${NC}
   Update installed packages, Nix garbage collect:
-    ${GREY}curios-update --update${NC}"
+    ${GREY}sudo curios-update --update${NC}"
   exit 0
 }
 
@@ -137,7 +137,7 @@ fi
 
 # This script must be run as root for --upgrade, --update and --export option
 if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 ]]; then
-  echo -e "${RED}This script MUST be run as root: sudo curios-update --upgrade${NC}" >&2
+  echo -e "${RED}This script MUST be run as root with sudo${NC}" >&2
   exit 1
 fi
 
