@@ -45,9 +45,9 @@ ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}                  Print this message.
   ${GREY}--check${NC}                     Check online if a most recent version of CuriOS exist.
   ${GREY}--export${NC}                    Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
-  ${GREY}--show-modules${NC}              Print current CuriOS modules configuration from '$CURIOS_MODULES_FILE'.
-  ${GREY}--nixos-option OPTION${NC}       Print the value of a NixOS option/configuration.
-  ${GREY}--update-modules KEY VALUE${NC}  Update a value into the JSON file '$CURIOS_MODULES_FILE'.
+  ${GREY}--show-modules${NC}              Show all CuriOS module settings stored in '$CURIOS_MODULES_FILE'.
+  ${GREY}--nixos-option OPTION${NC}       Query the current value of any NixOS or CuriOS option.
+  ${GREY}--update-modules KEY VALUE${NC}  Change a CuriOS module setting (updates '$CURIOS_MODULES_FILE').
   ${GREY}--update${NC}                    Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}                   Download latest CuriOS system and install it. Implies --check option.
   ${GREY}-v, --verbose${NC}               Print more information.
@@ -56,6 +56,8 @@ ${GREY}OPTIONS:${NC}
 ${GREY}EXAMPLES:${NC}
   Check online for the latest CuriOS version:
     ${GREY}curios-update --check${NC}
+  If check says so, upgrade whole system to latest version:
+    ${GREY}sudo curios-update --upgrade${NC}
   Export current modules configuration:
     ${GREY}sudo curios-update --export${NC}
   Show current modules configuration:
@@ -65,9 +67,7 @@ ${GREY}EXAMPLES:${NC}
   Update a module configuration:
     ${GREY}sudo curios-update --update-modules curios.desktop.browser.firefox.enable true${NC}
     ${GREY}sudo curios-update --update-modules curios.system.timeZone \"Europe/Berlin\"${NC}
-  Upgrade whole system to latest version:
-    ${GREY}sudo curios-update --upgrade${NC}
-  Update installed packages, Nix garbage collect:
+  Must be followed by a system update:
     ${GREY}sudo curios-update --update${NC}"
   exit 0
 }
@@ -91,7 +91,7 @@ NIXOS_OPTION_PATH=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,nixos-option,update-modules,update,upgrade" --options ":hvs" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,nixos-option:,update-modules:,update,upgrade" --options ":hvs" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -113,7 +113,8 @@ while true; do
     ;;
   --nixos-option)
     RUN_NIXOS_OPTION=1
-    shift
+    NIXOS_OPTION_PATH="$2"
+    shift 2
     ;;
   --check)
     CHECK_ONLINE=1
@@ -125,7 +126,8 @@ while true; do
     ;;
   --update-modules)
     UPDATE_MODULES=1
-    shift
+    UPDATE_KEY="$2"
+    shift 2
     ;;
   --update)
     UPDATE_SYSTEM=1
@@ -393,22 +395,20 @@ if [ $SHOW_MODULES -eq 1 ]; then
 fi
 
 if [ $RUN_NIXOS_OPTION -eq 1 ]; then
-  if [ $# -lt 1 ]; then
+  if [ -z "$NIXOS_OPTION_PATH" ]; then
     echo -e "${RED}Error: --nixos-option requires 1 argument: OPTION_PATH${NC}"
     exit 1
   fi
-  NIXOS_OPTION_PATH="$1"
   nixos-option "$NIXOS_OPTION_PATH"
   exit 0
 fi
 
 if [ $UPDATE_MODULES -eq 1 ]; then
-  if [ $# -lt 2 ]; then
+  if [ $# -lt 1 ]; then
     echo -e "${RED}Error: --update-modules requires 2 arguments: KEY and VALUE${NC}"
     exit 1
   fi
-  UPDATE_KEY="$1"
-  UPDATE_VALUE="$2"
+  UPDATE_VALUE="$1"
   update_curios_modules "$UPDATE_KEY" "$UPDATE_VALUE"
   exit 0
 fi
