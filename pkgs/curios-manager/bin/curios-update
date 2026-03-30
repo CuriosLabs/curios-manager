@@ -42,14 +42,15 @@ ${GREY}USAGE:${NC}
   curios-update [options]
 
 ${GREY}OPTIONS:${NC}
-  ${GREY}-h, --help${NC}         Print this message.
-  ${GREY}--check${NC}            Check online if a most recent version of CuriOS exist.
-  ${GREY}--export${NC}           Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
-  ${GREY}--show-modules${NC}     Print current CuriOS modules configuration from '$CURIOS_MODULES_FILE'.
-  ${GREY}--update${NC}           Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
-  ${GREY}--upgrade${NC}          Download latest CuriOS system and install it. Implies --check option.
-  ${GREY}-v, --verbose${NC}      Print more information.
-  ${GREY}--version${NC}          Print version number and exit.
+  ${GREY}-h, --help${NC}                  Print this message.
+  ${GREY}--check${NC}                     Check online if a most recent version of CuriOS exist.
+  ${GREY}--export${NC}                    Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
+  ${GREY}--show-modules${NC}              Print current CuriOS modules configuration from '$CURIOS_MODULES_FILE'.
+  ${GREY}--update-modules KEY VALUE${NC}  Update a value into the JSON file '$CURIOS_MODULES_FILE'.
+  ${GREY}--update${NC}                    Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
+  ${GREY}--upgrade${NC}                   Download latest CuriOS system and install it. Implies --check option.
+  ${GREY}-v, --verbose${NC}               Print more information.
+  ${GREY}--version${NC}                   Print version number and exit.
 
 ${GREY}EXAMPLES:${NC}
   Check online for the latest CuriOS version:
@@ -58,6 +59,9 @@ ${GREY}EXAMPLES:${NC}
     ${GREY}sudo curios-update --export${NC}
   Show current modules configuration:
     ${GREY}curios-update --show-modules${NC}
+  Update a module configuration:
+    ${GREY}sudo curios-update --update-modules curios.desktop.browser.firefox.enable true${NC}
+    ${GREY}sudo curios-update --update-modules curios.system.timeZone \"Europe/Berlin\"${NC}
   Upgrade whole system to latest version:
     ${GREY}sudo curios-update --upgrade${NC}
   Update installed packages, Nix garbage collect:
@@ -70,16 +74,19 @@ VERBOSE=0
 CHECK_ONLINE=0
 EXPORT_MODULES=0
 SHOW_MODULES=0
+UPDATE_MODULES=0
 UPDATE_SYSTEM=0
 UPGRADE_SYSTEM=0
 UPGRADABLE=0
 LATEST_VERSION=""
 LATEST_SOURCE=""
 NIX_CHANNEL_URL=""
+UPDATE_KEY=""
+UPDATE_VALUE=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,update,upgrade" --options ":hvs" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,update-modules,update,upgrade" --options ":hvs" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -105,6 +112,10 @@ while true; do
     ;;
   --export)
     EXPORT_MODULES=1
+    shift
+    ;;
+  --update-modules)
+    UPDATE_MODULES=1
     shift
     ;;
   --update)
@@ -135,9 +146,9 @@ if [ $VERBOSE -eq 1 ]; then
   echo "PATH: $PATH"
 fi
 
-# This script must be run as root for --upgrade, --update and --export option
-if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 ]]; then
-  echo -e "${RED}This script MUST be run as root with sudo${NC}" >&2
+# This script must be run as root for --upgrade, --update, --export and --update-modules option
+if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 || $UPDATE_MODULES -eq 1 ]]; then
+  echo -e "${RED}This script MUST be run as root: sudo curios-update --upgrade${NC}" >&2
   exit 1
 fi
 
@@ -244,6 +255,36 @@ show_curios_modules() {
   jq '.' "$CURIOS_MODULES_FILE"
 }
 
+# Update a value into the JSON file $CURIOS_MODULES_FILE
+update_curios_modules() {
+  local key="$1"
+  local value="$2"
+  local tmp_json
+  tmp_json=$(mktemp /tmp/curios-modules-XXXXXX.json)
+
+  if [ ! -f "$CURIOS_MODULES_FILE" ]; then
+    echo -e "${RED}Error: $CURIOS_MODULES_FILE not found.${NC}"
+    exit 1
+  fi
+
+  # Check if key exists
+  if [[ $(jq -r ".$key" "$CURIOS_MODULES_FILE" 2>/dev/null) == "null" ]]; then
+    echo -e "${RED}Error: Key '$key' not found in $CURIOS_MODULES_FILE${NC}"
+    exit 1
+  fi
+
+  # Handle boolean vs string
+  if [[ "$value" == "true" || "$value" == "false" ]]; then
+    jq ".$key = $value" "$CURIOS_MODULES_FILE" >"$tmp_json"
+  else
+    jq --arg val "$value" ".$key = \$val" "$CURIOS_MODULES_FILE" >"$tmp_json"
+  fi
+
+  mv "$tmp_json" "$CURIOS_MODULES_FILE"
+  chmod 644 "$CURIOS_MODULES_FILE"
+  echo -e "${GREEN}Module configuration updated: $key = $value${NC}"
+}
+
 # Upgrade the system
 upgrade_curios() {
   local extracted_source_path=""
@@ -339,6 +380,17 @@ fi
 
 if [ $SHOW_MODULES -eq 1 ]; then
   show_curios_modules
+  exit 0
+fi
+
+if [ $UPDATE_MODULES -eq 1 ]; then
+  if [ $# -lt 2 ]; then
+    echo -e "${RED}Error: --update-modules requires 2 arguments: KEY and VALUE${NC}"
+    exit 1
+  fi
+  UPDATE_KEY="$1"
+  UPDATE_VALUE="$2"
+  update_curios_modules "$UPDATE_KEY" "$UPDATE_VALUE"
   exit 0
 fi
 
