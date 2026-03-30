@@ -46,6 +46,7 @@ ${GREY}OPTIONS:${NC}
   ${GREY}--check${NC}                     Check online if a most recent version of CuriOS exist.
   ${GREY}--export${NC}                    Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
   ${GREY}--show-modules${NC}              Print current CuriOS modules configuration from '$CURIOS_MODULES_FILE'.
+  ${GREY}--nixos-option OPTION${NC}       Print the value of a NixOS option/configuration.
   ${GREY}--update-modules KEY VALUE${NC}  Update a value into the JSON file '$CURIOS_MODULES_FILE'.
   ${GREY}--update${NC}                    Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}                   Download latest CuriOS system and install it. Implies --check option.
@@ -59,6 +60,8 @@ ${GREY}EXAMPLES:${NC}
     ${GREY}sudo curios-update --export${NC}
   Show current modules configuration:
     ${GREY}curios-update --show-modules${NC}
+  Show a NixOS option:
+    ${GREY}curios-update --nixos-option curios.system.keyboard${NC}
   Update a module configuration:
     ${GREY}sudo curios-update --update-modules curios.desktop.browser.firefox.enable true${NC}
     ${GREY}sudo curios-update --update-modules curios.system.timeZone \"Europe/Berlin\"${NC}
@@ -74,6 +77,7 @@ VERBOSE=0
 CHECK_ONLINE=0
 EXPORT_MODULES=0
 SHOW_MODULES=0
+RUN_NIXOS_OPTION=0
 UPDATE_MODULES=0
 UPDATE_SYSTEM=0
 UPGRADE_SYSTEM=0
@@ -83,10 +87,11 @@ LATEST_SOURCE=""
 NIX_CHANNEL_URL=""
 UPDATE_KEY=""
 UPDATE_VALUE=""
+NIXOS_OPTION_PATH=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,update-modules,update,upgrade" --options ":hvs" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,nixos-option,update-modules,update,upgrade" --options ":hvs" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -104,6 +109,10 @@ while true; do
     ;;
   -s | --show-modules)
     SHOW_MODULES=1
+    shift
+    ;;
+  --nixos-option)
+    RUN_NIXOS_OPTION=1
     shift
     ;;
   --check)
@@ -380,6 +389,16 @@ fi
 
 if [ $SHOW_MODULES -eq 1 ]; then
   show_curios_modules
+  exit 0
+fi
+
+if [ $RUN_NIXOS_OPTION -eq 1 ]; then
+  if [ $# -lt 1 ]; then
+    echo -e "${RED}Error: --nixos-option requires 1 argument: OPTION_PATH${NC}"
+    exit 1
+  fi
+  NIXOS_OPTION_PATH="$1"
+  nixos-option "$NIXOS_OPTION_PATH"
   exit 0
 fi
 
