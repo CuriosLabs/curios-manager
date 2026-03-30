@@ -58,13 +58,13 @@ ${GREY}EXAMPLES:${NC}
     ${GREY}curios-update --check${NC}
   If check says so, upgrade whole system to latest version:
     ${GREY}sudo curios-update --upgrade${NC}
-  Export current modules configuration:
+  Export CuriOS current modules configuration:
     ${GREY}sudo curios-update --export${NC}
-  Show current modules configuration:
+  Show CuriOS current modules configuration:
     ${GREY}curios-update --show-modules${NC}
-  Show a NixOS option:
+  Show a NixOS or CuriOS option:
     ${GREY}curios-update --nixos-option curios.system.keyboard${NC}
-  Update a module configuration:
+  Update a CuriOS module configuration:
     ${GREY}sudo curios-update --update-modules curios.desktop.browser.firefox.enable true${NC}
     ${GREY}sudo curios-update --update-modules curios.system.timeZone \"Europe/Berlin\"${NC}
   Must be followed by a system update:
