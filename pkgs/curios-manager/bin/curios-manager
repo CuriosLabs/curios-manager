@@ -19,7 +19,7 @@ source "${__dir}/functions/main_menu.sh"
 #------------- Print help function
 usage() {
   echo -e "CuriOS Manager version ${SCRIPT_VERSION}
-* modern script interface for managing your CuriOS system *
+  * modern script interface (TUI) for managing your CuriOS system *
 
 ${GREY}USAGE:${NC}
   curios-manager [options]

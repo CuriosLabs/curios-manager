@@ -19,6 +19,8 @@
 
 set -eu
 
+readonly SCRIPT_VERSION="0.17"
+readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
 readonly GREEN="\033[32;1m"    # Green and bold
@@ -33,15 +35,18 @@ trap 'rm -rf -- "$TMP_DIR"' EXIT
 
 #------------- Print help function
 usage() {
-  echo -e "${GREY}USAGE:${NC}
+  echo -e "CuriOS system manager version ${SCRIPT_VERSION}
+  * A script for managing your CuriOS system from the command line *
+
+${GREY}USAGE:${NC}
   curios-update [options]
 
 ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}         Print this message.
   ${GREY}--check${NC}            Check online if a most recent version of CuriOS exist.
-  ${GREY}--export${NC}           Export current CuriOS modules configuration to /etc/nixos/modules.json
-  ${GREY}--update${NC}           Update installed packages, do a Nix collect garbage, warn user if a reboot is necessary.
-  ${GREY}--upgrade${NC}          Download latest CuriOS and install it. Implies --check option.
+  ${GREY}--export${NC}           Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
+  ${GREY}--update${NC}           Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
+  ${GREY}--upgrade${NC}          Download latest CuriOS system and install it. Implies --check option.
   ${GREY}-v, --verbose${NC}      Print more information.
   ${GREY}--version${NC}          Print version number and exit.
 
@@ -58,7 +63,6 @@ ${GREY}EXAMPLES:${NC}
 }
 
 #------------- var init state
-readonly SCRIPT_VERSION="0.16"
 VERBOSE=0
 CHECK_ONLINE=0
 EXPORT_MODULES=0
@@ -201,7 +205,7 @@ reboot_check() {
 
 # Export all NixOS options values from 'curios' to a JSON file
 export_curios_modules() {
-  echo -e "${GREEN}Exporting CuriOS modules to /etc/nixos/modules.json${NC}"
+  echo -e "${GREEN}Exporting CuriOS modules to $CURIOS_MODULES_FILE${NC}"
   # Get all curios options, filter out errors and derivations
   # then wrap in a nix attribute set and convert to JSON using nix-instantiate
   if ! nixos-option -r curios >/dev/null 2>&1; then
@@ -210,16 +214,16 @@ export_curios_modules() {
   fi
 
   # Backup existing file if it exists
-  if [ -f /etc/nixos/modules.json ]; then
+  if [ -f $CURIOS_MODULES_FILE ]; then
     local backup_file
-    backup_file="/etc/nixos/modules.json.$(date +%Y%m%d_%H%M%S).bak"
-    cp /etc/nixos/modules.json "$backup_file"
+    backup_file="$CURIOS_MODULES_FILE.$(date +%Y%m%d_%H%M%S).bak"
+    cp $CURIOS_MODULES_FILE "$backup_file"
     echo -e "${BLUE}Backup created: ${backup_file}${NC}"
   fi
 
   local curios_current_options=""
   curios_current_options=$(nixos-option -r curios 2>/dev/null)
-  echo "{$curios_current_options}" | /run/current-system/sw/bin/nix-instantiate --eval --strict --json - >/etc/nixos/modules.json ||
+  echo "{$curios_current_options}" | /run/current-system/sw/bin/nix-instantiate --eval --strict --json - >$CURIOS_MODULES_FILE ||
     echo -e "${RED}Error: Failed to export CuriOS modules to JSON.${NC}"
 }
 
@@ -271,7 +275,7 @@ upgrade_curios() {
   fi
   # Updating system
   echo -e "${YELLOW}Updating packages...${NC}"
-  # Updating /etc/nixos/modules.json
+  # Updating $CURIOS_MODULES_FILE
   export_curios_modules
   # Updating whole system
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto

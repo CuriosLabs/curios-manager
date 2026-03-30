@@ -20,7 +20,7 @@ lint:
   @echo 'Linting Nix files...'
   for file in `fd --type f ".nix" .`; do statix check $file; done
   @echo 'Linting Bash files...'
-  shellcheck --color=always -f tty -x -P pkgs/curios-manager/bin pkgs/curios-manager/bin/curios-* pkgs/curios-manager/bin/functions/*.sh
+  shellcheck --color=always -f tty -x -P pkgs/curios-manager/bin pkgs/curios-manager/bin/curios-* pkgs/curios-manager/bin/functions/*.sh && echo 'Shellcheck: SUCCESS'
 
 # Complete publish process: lint, tag then build and update hash signature, finally push on github.
 publish VERSION:
@@ -65,8 +65,8 @@ hash-update VERSION:
   git push
 
 # Launch curios-manager bash script directly (not the Nix pkgs).
-test:
-  ./pkgs/curios-manager/bin/curios-manager
+test *FLAGS:
+  ./pkgs/curios-manager/bin/curios-manager {{FLAGS}}
 
 # Launch curios-update bash script directly (not the Nix pkgs).
 test-update *FLAGS:
