@@ -60,14 +60,16 @@ ${GREY}EXAMPLES:${NC}
     ${GREY}sudo curios-update --upgrade${NC}
   Export CuriOS current modules configuration:
     ${GREY}sudo curios-update --export${NC}
+
+  Update a CuriOS module sequence for installing firefox and set system time-zone:
   Show CuriOS current modules configuration:
     ${GREY}curios-update --show-modules${NC}
-  Show a NixOS or CuriOS option:
-    ${GREY}curios-update --nixos-option curios.system.keyboard${NC}
-  Update a CuriOS module configuration:
+  Check a NixOS or CuriOS configuration details:
+    ${GREY}curios-update --nixos-option curios.system.timeZone${NC}
+  Then update a CuriOS module configuration:
     ${GREY}sudo curios-update --update-modules curios.desktop.browser.firefox.enable true${NC}
     ${GREY}sudo curios-update --update-modules curios.system.timeZone \"Europe/Berlin\"${NC}
-  Must be followed by a system update:
+  Finally, it MUST be followed by a system update:
     ${GREY}sudo curios-update --update${NC}"
   exit 0
 }
