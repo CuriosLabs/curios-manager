@@ -45,6 +45,7 @@ ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}         Print this message.
   ${GREY}--check${NC}            Check online if a most recent version of CuriOS exist.
   ${GREY}--export${NC}           Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
+  ${GREY}--show-modules${NC}     Print current CuriOS modules configuration.
   ${GREY}--update${NC}           Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}          Download latest CuriOS system and install it. Implies --check option.
   ${GREY}-v, --verbose${NC}      Print more information.
@@ -55,6 +56,8 @@ ${GREY}EXAMPLES:${NC}
     ${GREY}curios-update --check${NC}
   Export current modules configuration:
     ${GREY}sudo curios-update --export${NC}
+  Show current modules configuration:
+    ${GREY}curios-update --show-modules${NC}
   Upgrade whole system to latest version:
     ${GREY}sudo curios-update --upgrade${NC}
   Update installed packages, Nix garbage collect:
@@ -66,6 +69,7 @@ ${GREY}EXAMPLES:${NC}
 VERBOSE=0
 CHECK_ONLINE=0
 EXPORT_MODULES=0
+SHOW_MODULES=0
 UPDATE_SYSTEM=0
 UPGRADE_SYSTEM=0
 UPGRADABLE=0
@@ -75,7 +79,7 @@ NIX_CHANNEL_URL=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,export,update,upgrade" --options ":hv" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,update,upgrade" --options ":hvs" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -90,6 +94,10 @@ while true; do
     ;;
   -h | --help)
     usage
+    ;;
+  -s | --show-modules)
+    SHOW_MODULES=1
+    shift
     ;;
   --check)
     CHECK_ONLINE=1
@@ -227,6 +235,15 @@ export_curios_modules() {
     echo -e "${RED}Error: Failed to export CuriOS modules to JSON.${NC}"
 }
 
+# Print current CuriOS modules configuration
+show_curios_modules() {
+  if [ ! -f "$CURIOS_MODULES_FILE" ]; then
+    echo -e "${YELLOW}Warning: $CURIOS_MODULES_FILE not found. Try --export first.${NC}"
+    return
+  fi
+  jq '.' "$CURIOS_MODULES_FILE"
+}
+
 # Upgrade the system
 upgrade_curios() {
   local extracted_source_path=""
@@ -288,7 +305,7 @@ if [ ! -f /etc/os-release ]; then
   exit 1
 fi
 source /etc/os-release
-echo -e "CuriOS current version is ${GREY}${VARIANT_ID}${NC}"
+#echo -e "CuriOS current version is ${GREY}${VARIANT_ID}${NC}"
 
 if [ $CHECK_ONLINE -eq 1 ]; then
   get_latest_version
@@ -317,6 +334,11 @@ fi
 
 if [ $EXPORT_MODULES -eq 1 ]; then
   export_curios_modules
+  exit 0
+fi
+
+if [ $SHOW_MODULES -eq 1 ]; then
+  show_curios_modules
   exit 0
 fi
 
