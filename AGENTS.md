@@ -33,8 +33,8 @@ The project follows a modular architecture. The main directories are:
 - `pkgs/curios-manager/default.nix`: The main nix package configuration file.
 - `pkgs/curios-manager/bin/curios-manager`: The main bash script, entry point
   of the TUI. User interaction is made with [Gum](https://github.com/charmbracelet/gum).
-- `pkgs/curios-manager/bin/curios-update`: A bash script that check if a new
-  version of CuriOS is available on Github. It also can upgrade the whole
+- `pkgs/curios-manager/bin/curios-update`: A bash script that manage a CuriOS
+  system from the command line. It can upgrade/update the whole
   system. `curios-update --check` can be called from a systemd timer.
 - `default.nix`: The default nix build/import package file.
 - `shell.nix`: A Nix configuration file for the `nix-shell` command. It will setup
@@ -55,32 +55,32 @@ Use the appropriate shell environment before with `nix-shell shell.nix`.
 - **Lint Files**: Check code quality for Nix and Bash files:
 
   ```bash
-  just lint
+  nix-shell shell.nix --run "just lint"
   ```
 
 - **Test Application**: Launch the `curios-manager` TUI:
 
   ```bash
-  just test
+  nix-shell shell.nix --run "just test --help"
   ```
 
 - **Publish a new version**: Create a new git tag, push it, build it and update
 the hash signature for the Nix package:
 
   ```bash
-  just publish 0.21
+  nix-shell shell.nix --run "just publish 0.21"
   ```
 
 - **Run**: Build the Nix package (from Github) and run it:
 
   ```bash
-  just run
+  nix-shell shell.nix --run "just run"
   ```
 
 - **Clean**: Remove build artifacts:
 
   ```bash
-  just clean
+  nix-shell shell.nix --run "just clean"
   ```
 
 - **Supported Version**: NixOS 25.11 or later.

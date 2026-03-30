@@ -213,11 +213,11 @@ get_latest_version() {
 # Update Nix packages, system, collect garbage
 update_curios() {
   echo -e "${GREEN}Launching Nix garbage collection...${NC}"
-  nix-collect-garbage --delete-older-than 7d
+  nix-collect-garbage --delete-older-than 7d >/dev/null
   echo -e "${GREEN}Updating CuriOS system...${NC}"
-  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto >/dev/null
   echo -e "${GREEN}Updating Nix flakes...${NC}"
-  nix profile upgrade --all
+  nix profile upgrade --all >/dev/null
   reboot_check
 }
 
