@@ -26,7 +26,8 @@ The project follows a modular architecture. The main directories are:
 
 - `pkgs/curios-manager/`: The Nix custom package main directory.
 - `pkgs/curios-manager/bin/`: The bash shell scripts subdirectory.
-- `pkgs/curios-manager/bin/functions/`: The `curios-manager` TUI bash functions directory.
+- `pkgs/curios-manager/bin/functions/`: The `curios-manager` TUI bash functions
+  directory.
 
 ## Key Files
 
