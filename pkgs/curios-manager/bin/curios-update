@@ -47,6 +47,7 @@ ${GREY}OPTIONS:${NC}
   ${GREY}--export${NC}                    Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
   ${GREY}--show-modules${NC}              Show all CuriOS module settings stored in '$CURIOS_MODULES_FILE'.
   ${GREY}--nixos-option OPTION${NC}       Query the current value of any NixOS or CuriOS option.
+  ${GREY}--search-pkgs PKG_NAME${NC}      Search for a package in NixOS channel using its name.
   ${GREY}--update-modules KEY VALUE${NC}  Change a CuriOS module setting (updates '$CURIOS_MODULES_FILE').
   ${GREY}--update${NC}                    Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}                   Download latest CuriOS system and install it. Implies --check option.
@@ -70,7 +71,10 @@ ${GREY}EXAMPLES:${NC}
     ${GREY}sudo curios-update --update-modules curios.desktop.browser.firefox.enable true${NC}
     ${GREY}sudo curios-update --update-modules curios.system.timeZone \"Europe/Berlin\"${NC}
   Finally, it MUST be followed by a system update:
-    ${GREY}sudo curios-update --update${NC}"
+    ${GREY}sudo curios-update --update${NC}
+
+  Search for a package:
+    ${GREY}curios-update --search-pkgs blender${NC}"
   exit 0
 }
 
@@ -82,6 +86,7 @@ SHOW_MODULES=0
 RUN_NIXOS_OPTION=0
 UPDATE_MODULES=0
 UPDATE_SYSTEM=0
+SEARCH_PKGS=0
 UPGRADE_SYSTEM=0
 UPGRADABLE=0
 LATEST_VERSION=""
@@ -90,10 +95,11 @@ NIX_CHANNEL_URL=""
 UPDATE_KEY=""
 UPDATE_VALUE=""
 NIXOS_OPTION_PATH=""
+SEARCH_PKG_NAME=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,nixos-option:,update-modules:,update,upgrade" --options ":hvs" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,nixos-option:,search-pkgs:,update-modules:,update,upgrade" --options ":hvs" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -116,6 +122,11 @@ while true; do
   --nixos-option)
     RUN_NIXOS_OPTION=1
     NIXOS_OPTION_PATH="$2"
+    shift 2
+    ;;
+  --search-pkgs)
+    SEARCH_PKGS=1
+    SEARCH_PKG_NAME="$2"
     shift 2
     ;;
   --check)
@@ -402,6 +413,15 @@ if [ $RUN_NIXOS_OPTION -eq 1 ]; then
     exit 1
   fi
   nixos-option "$NIXOS_OPTION_PATH"
+  exit 0
+fi
+
+if [ "$SEARCH_PKGS" -eq 1 ]; then
+  if [ -z "$SEARCH_PKG_NAME" ]; then
+    echo -e "${RED}Error: --search-pkgs requires 1 argument: PKG_NAME${NC}"
+    exit 1
+  fi
+  nix-search --channel "$VERSION_ID" --json "$SEARCH_PKG_NAME"
   exit 0
 fi
 
