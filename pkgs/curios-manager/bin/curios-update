@@ -19,7 +19,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.17"
+readonly SCRIPT_VERSION="0.18"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -45,12 +45,13 @@ ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}                  Print this message.
   ${GREY}--check${NC}                     Check online if a most recent version of CuriOS exist.
   ${GREY}--export${NC}                    Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
-  ${GREY}--show-modules${NC}              Show all CuriOS module settings stored in '$CURIOS_MODULES_FILE'.
+  ${GREY}--show-modules${NC}              Show all CuriOS module settings stored in '$CURIOS_MODULES_FILE'. JSON output.
   ${GREY}--nixos-option OPTION${NC}       Query the current value of any NixOS or CuriOS option.
-  ${GREY}--search-pkgs PKG_NAME${NC}      Search for a package in NixOS channel using its name.
   ${GREY}--update-modules KEY VALUE${NC}  Change a CuriOS module setting (updates '$CURIOS_MODULES_FILE').
   ${GREY}--update${NC}                    Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}                   Download latest CuriOS system and install it. Implies --check option.
+  ${GREY}--search-pkgs PKG_NAME${NC}      Search for a package in NixOS channel using its name. JSON output, use 'package_attr_name' key value for --add-pkg option.
+  ${GREY}--add-pkg PKG_NAME${NC}          Add a NixOS package into '/etc/nixos/settings.nix', and update the system (--update is implied).
   ${GREY}-v, --verbose${NC}               Print more information.
   ${GREY}--version${NC}                   Print version number and exit.
 
@@ -73,8 +74,11 @@ ${GREY}EXAMPLES:${NC}
   Finally, it MUST be followed by a system update:
     ${GREY}sudo curios-update --update${NC}
 
-  Search for a package:
-    ${GREY}curios-update --search-pkgs blender${NC}"
+  Search for a NixOS package by name:
+    ${GREY}curios-update --search-pkgs blender${NC}
+  Then install the previously found package:
+    ${GREY}sudo curios-update --add-pkg blender${NC}
+"
   exit 0
 }
 
@@ -87,6 +91,7 @@ RUN_NIXOS_OPTION=0
 UPDATE_MODULES=0
 UPDATE_SYSTEM=0
 SEARCH_PKGS=0
+ADD_PKG=0
 UPGRADE_SYSTEM=0
 UPGRADABLE=0
 LATEST_VERSION=""
@@ -96,10 +101,11 @@ UPDATE_KEY=""
 UPDATE_VALUE=""
 NIXOS_OPTION_PATH=""
 SEARCH_PKG_NAME=""
+ADD_PKG_NAME=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,nixos-option:,search-pkgs:,update-modules:,update,upgrade" --options ":hvs" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,nixos-option:,search-pkgs:,add-pkg:,update-modules:,update,upgrade" --options ":hvs" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -127,6 +133,11 @@ while true; do
   --search-pkgs)
     SEARCH_PKGS=1
     SEARCH_PKG_NAME="$2"
+    shift 2
+    ;;
+  --add-pkg)
+    ADD_PKG=1
+    ADD_PKG_NAME="$2"
     shift 2
     ;;
   --check)
@@ -170,9 +181,9 @@ if [ $VERBOSE -eq 1 ]; then
   echo "PATH: $PATH"
 fi
 
-# This script must be run as root for --upgrade, --update, --export and --update-modules option
-if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 || $UPDATE_MODULES -eq 1 ]]; then
-  echo -e "${RED}This script MUST be run as root: sudo curios-update --upgrade${NC}" >&2
+# This script must be run as root for --upgrade, --update, --export, --add-pkg and --update-modules option
+if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 || $ADD_PKG -eq 1 || $UPDATE_MODULES -eq 1 ]]; then
+  echo -e "${RED}This script MUST be run as root: sudo curios-update --add-pkg PKG_NAME${NC}" >&2
   exit 1
 fi
 
@@ -277,6 +288,32 @@ show_curios_modules() {
     return
   fi
   jq '.' "$CURIOS_MODULES_FILE"
+}
+
+# Add a package to /etc/nixos/settings.nix and install it
+add_package_to_settings() {
+  local PKG="$1"
+  local SETTINGS_FILE="/etc/nixos/settings.nix"
+
+  if [ -z "$PKG" ]; then
+    echo -e "${RED}Error: Package name is empty.${NC}"
+    exit 1
+  fi
+
+  # Check if package is already in the list
+  if grep -q "pkgs.$PKG" "$SETTINGS_FILE"; then
+    echo -e "${YELLOW}Package pkgs.$PKG is already present in $SETTINGS_FILE.${NC}"
+    return
+  fi
+
+  # Add the package to the environment.systemPackages list.
+  if sed -i "/environment.systemPackages = \[/a \    pkgs.$PKG" "$SETTINGS_FILE"; then
+    echo -e "${GREEN}Package pkgs.$PKG added to $SETTINGS_FILE${NC}"
+    update_curios
+  else
+    echo -e "${RED}Failed to add package pkgs.$PKG to $SETTINGS_FILE.${NC}"
+    exit 1
+  fi
 }
 
 # Update a value into the JSON file $CURIOS_MODULES_FILE
@@ -422,6 +459,11 @@ if [ "$SEARCH_PKGS" -eq 1 ]; then
     exit 1
   fi
   nix-search --channel "$VERSION_ID" --json "$SEARCH_PKG_NAME"
+  exit 0
+fi
+
+if [ "$ADD_PKG" -eq 1 ]; then
+  add_package_to_settings "$ADD_PKG_NAME"
   exit 0
 fi
 
