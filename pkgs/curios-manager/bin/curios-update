@@ -19,7 +19,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.18"
+readonly SCRIPT_VERSION="0.19"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
