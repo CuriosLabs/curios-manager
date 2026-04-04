@@ -19,7 +19,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.18"
+readonly SCRIPT_VERSION="0.19"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -46,8 +46,9 @@ ${GREY}OPTIONS:${NC}
   ${GREY}--check${NC}                     Check online if a most recent version of CuriOS exist.
   ${GREY}--export${NC}                    Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
   ${GREY}--show-modules${NC}              Show all CuriOS module settings stored in '$CURIOS_MODULES_FILE'. JSON output.
-  ${GREY}--nixos-option OPTION${NC}       Query the current value of any NixOS or CuriOS option.
-  ${GREY}--update-modules KEY VALUE${NC}  Change a CuriOS module setting (updates '$CURIOS_MODULES_FILE').
+  ${GREY}--search-modules KEY${NC}        Search for a CuriOS module setting key by name in '$CURIOS_MODULES_FILE'. JSON output.
+  ${GREY}--nixos-option OPTION${NC}       Query the current value of any NixOS option or CuriOS module.
+  ${GREY}--update-module KEY VALUE${NC}  Change a CuriOS module setting (updates '$CURIOS_MODULES_FILE').
   ${GREY}--update${NC}                    Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}                   Download latest CuriOS system and install it. Implies --check option.
   ${GREY}--search-pkgs PKG_NAME${NC}      Search for a package in NixOS channel using its name. JSON output, use 'package_attr_name' key value for --add-pkg option.
@@ -64,13 +65,15 @@ ${GREY}EXAMPLES:${NC}
     ${GREY}sudo curios-update --export${NC}
 
   Update a CuriOS module sequence for installing firefox and set system time-zone:
-  Show CuriOS current modules configuration:
+  Show CuriOS current configuration for all modules:
     ${GREY}curios-update --show-modules${NC}
+  Search for a CuriOS module by name (i.e: firefox):
+    ${GREY}curios-update --search-modules firefox${NC}
   Check a NixOS or CuriOS configuration details:
     ${GREY}curios-update --nixos-option curios.system.timeZone${NC}
   Then update a CuriOS module configuration:
-    ${GREY}sudo curios-update --update-modules curios.desktop.browser.firefox.enable true${NC}
-    ${GREY}sudo curios-update --update-modules curios.system.timeZone \"Europe/Berlin\"${NC}
+    ${GREY}sudo curios-update --update-module curios.desktop.browser.firefox.enable true${NC}
+    ${GREY}sudo curios-update --update-module curios.system.timeZone \"Europe/Berlin\"${NC}
   Finally, it MUST be followed by a system update:
     ${GREY}sudo curios-update --update${NC}
 
@@ -87,6 +90,7 @@ VERBOSE=0
 CHECK_ONLINE=0
 EXPORT_MODULES=0
 SHOW_MODULES=0
+SEARCH_MODULES=0
 RUN_NIXOS_OPTION=0
 UPDATE_MODULES=0
 UPDATE_SYSTEM=0
@@ -101,11 +105,12 @@ UPDATE_KEY=""
 UPDATE_VALUE=""
 NIXOS_OPTION_PATH=""
 SEARCH_PKG_NAME=""
+SEARCH_MODULE_KEY=""
 ADD_PKG_NAME=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,nixos-option:,search-pkgs:,add-pkg:,update-modules:,update,upgrade" --options ":hvs" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,search-modules:,nixos-option:,search-pkgs:,add-pkg:,update-module:,update,upgrade" --options ":hvs" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -124,6 +129,11 @@ while true; do
   -s | --show-modules)
     SHOW_MODULES=1
     shift
+    ;;
+  --search-modules)
+    SEARCH_MODULES=1
+    SEARCH_MODULE_KEY="$2"
+    shift 2
     ;;
   --nixos-option)
     RUN_NIXOS_OPTION=1
@@ -148,7 +158,7 @@ while true; do
     EXPORT_MODULES=1
     shift
     ;;
-  --update-modules)
+  --update-module)
     UPDATE_MODULES=1
     UPDATE_KEY="$2"
     shift 2
@@ -181,7 +191,7 @@ if [ $VERBOSE -eq 1 ]; then
   echo "PATH: $PATH"
 fi
 
-# This script must be run as root for --upgrade, --update, --export, --add-pkg and --update-modules option
+# This script must be run as root for --upgrade, --update, --export, --add-pkg and --update-module option
 if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 || $ADD_PKG -eq 1 || $UPDATE_MODULES -eq 1 ]]; then
   echo -e "${RED}This script MUST be run as root: sudo curios-update --add-pkg PKG_NAME${NC}" >&2
   exit 1
@@ -288,6 +298,16 @@ show_curios_modules() {
     return
   fi
   jq '.' "$CURIOS_MODULES_FILE"
+}
+
+# Search for a CuriOS module key
+search_curios_modules() {
+  local key="$1"
+  if [ ! -f "$CURIOS_MODULES_FILE" ]; then
+    echo -e "${YELLOW}Warning: $CURIOS_MODULES_FILE not found. Try --export first.${NC}"
+    return
+  fi
+  jq "[paths | select(any(.[]; tostring | contains(\"$key\"))) | join(\".\")]" "$CURIOS_MODULES_FILE"
 }
 
 # Add a package to /etc/nixos/settings.nix and install it
@@ -444,6 +464,15 @@ if [ $SHOW_MODULES -eq 1 ]; then
   exit 0
 fi
 
+if [ $SEARCH_MODULES -eq 1 ]; then
+  if [ -z "$SEARCH_MODULE_KEY" ]; then
+    echo -e "${RED}Error: --search-modules requires 1 argument: KEY${NC}"
+    exit 1
+  fi
+  search_curios_modules "$SEARCH_MODULE_KEY"
+  exit 0
+fi
+
 if [ $RUN_NIXOS_OPTION -eq 1 ]; then
   if [ -z "$NIXOS_OPTION_PATH" ]; then
     echo -e "${RED}Error: --nixos-option requires 1 argument: OPTION_PATH${NC}"
@@ -469,7 +498,7 @@ fi
 
 if [ $UPDATE_MODULES -eq 1 ]; then
   if [ $# -lt 1 ]; then
-    echo -e "${RED}Error: --update-modules requires 2 arguments: KEY and VALUE${NC}"
+    echo -e "${RED}Error: --update-module requires 2 arguments: KEY and VALUE${NC}"
     exit 1
   fi
   UPDATE_VALUE="$1"
