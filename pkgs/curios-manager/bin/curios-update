@@ -510,6 +510,3 @@ if [ $UPGRADABLE -eq 1 ] && [ $UPGRADE_SYSTEM -eq 1 ]; then
   upgrade_curios
   exit 2
 fi
-
-  exit 2
-fi
