@@ -19,7 +19,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.19"
+readonly SCRIPT_VERSION="0.20"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -46,9 +46,9 @@ ${GREY}OPTIONS:${NC}
   ${GREY}--check${NC}                     Check online if a most recent version of CuriOS exist.
   ${GREY}--export${NC}                    Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
   ${GREY}--show-modules${NC}              Show all CuriOS module settings stored in '$CURIOS_MODULES_FILE'. JSON output.
-  ${GREY}--search-modules KEY${NC}        Search for a CuriOS module setting key by name in '$CURIOS_MODULES_FILE'. JSON output.
-  ${GREY}--nixos-option OPTION${NC}       Query the current value of any NixOS option or CuriOS module.
-  ${GREY}--update-module KEY VALUE${NC}  Change a CuriOS module setting (updates '$CURIOS_MODULES_FILE').
+  ${GREY}--search-modules NAME${NC}       Search for a CuriOS module setting key by name in '$CURIOS_MODULES_FILE'. JSON output.
+  ${GREY}--nixos-option KEY${NC}          Query the current value of any NixOS option or CuriOS module by its key.
+  ${GREY}--update-module KEY VALUE${NC}   Change a CuriOS module setting (updates '$CURIOS_MODULES_FILE').
   ${GREY}--update${NC}                    Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}                   Download latest CuriOS system and install it. Implies --check option.
   ${GREY}--search-pkgs PKG_NAME${NC}      Search for a package in NixOS channel using its name. JSON output, use 'package_attr_name' key value for --add-pkg option.
