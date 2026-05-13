@@ -43,7 +43,7 @@ stdenvNoCC.mkDerivation rec {
   '';
   desktopItem = pkgs.makeDesktopItem {
     name = "dev.curioslabs.curiosmanager";
-    exec = "/run/current-system/sw/bin/alacritty -e curios-manager";
+    exec = "xdg-terminal-exec curios-manager";
     desktopName = "CuriOS Manager TUI";
     icon = "curios";
     categories = [ "System" ];
