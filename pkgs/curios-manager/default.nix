@@ -30,6 +30,7 @@ stdenvNoCC.mkDerivation rec {
     pkgs.nix-search-cli
     pkgs.nixos-option
     #pkgs.nvtopPackages.full
+    pkgs.pamtester
     pkgs.restic
     pkgs.smartmontools
     pkgs.terminaltexteffects
