@@ -10,11 +10,13 @@ main_menu() {
   local SETTINGS_FILE
   local SETTINGS_LAST_MOD
   local SKEL_DIR
-  MAIN_MENU=$(gum choose --header "Select an option:" "󰀻 Applications" \
+  # --height forces showing all items (11 choices + header) unless terminal is too small
+  MAIN_MENU=$(gum choose --height 14 --header "Select an option:" "󰀻 Applications" \
     " Update" \
     " Upgrade" \
     "󱘸 Backup" \
     " System" \
+    "󰌾 Security" \
     " Settings (manual edit)" \
     " Themes" \
     "? Help" \
@@ -81,6 +83,9 @@ main_menu() {
     ;;
   " System")
     system_menu
+    ;;
+  "󰌾 Security")
+    security_menu
     ;;
   " Settings (manual edit)")
     SETTINGS_FILE="/etc/nixos/settings.nix"

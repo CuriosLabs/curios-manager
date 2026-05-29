@@ -18,6 +18,7 @@ pkgs.mkShell {
     ncdu
     nix-search-cli
     nixos-option
+    pamtester
     #nvtopPackages.full
     restic
     smartmontools
