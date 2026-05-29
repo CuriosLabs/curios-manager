@@ -3,13 +3,24 @@
 #------------- Security menu (U2F/FIDO2 YubiKey setup via pam_u2f + LUKS FIDO2)
 # - PAM U2F: Requires curios.security.u2f.enable
 # - LUKS FIDO2: Requires curios.security.luksFido2.enable (and a LUKS-encrypted system)
-# Uses pamu2fcfg for login/sudo and systemd-cryptenroll for disk encryption.
+# Uses pamu2fcfg for login/sudo (respecting curios.security.u2f.origin + appid) and
+# systemd-cryptenroll for disk encryption.
 
 _get_u2f_enabled() {
   # Check via curios-update as documented (it delegates to nixos-option internally).
   # This is the first verification step for the security/U2F feature.
   curios-update --nixos-option curios.security.u2f.enable 2>/dev/null |
     sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "unknown"
+}
+
+_get_u2f_origin() {
+  curios-update --nixos-option curios.security.u2f.origin 2>/dev/null |
+    sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "curios"
+}
+
+_get_u2f_appid() {
+  curios-update --nixos-option curios.security.u2f.appid 2>/dev/null |
+    sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "curios"
 }
 
 security_menu() {
@@ -101,6 +112,15 @@ _register_u2f_key() {
 
   mkdir -p "$u2f_dir"
 
+  # Read the system's configured origin and appid (new defaults are "curios")
+  local ORIGIN
+  local APPID
+  ORIGIN=$(_get_u2f_origin)
+  APPID=$(_get_u2f_appid)
+
+  echo -e "${GREY}Using PAM U2F origin='${ORIGIN}' appid='${APPID}' (from system config)${NC}"
+  echo ""
+
   if [[ "$mode" == "primary" ]]; then
     if [[ -f "$u2f_file" ]]; then
       echo -e "${YELLOW}Warning:${NC} $u2f_file already exists for user $USER."
@@ -116,14 +136,12 @@ _register_u2f_key() {
     echo ""
     if gum confirm "YubiKey inserted and ready?"; then
       # pamu2fcfg prints touch instructions on stderr (visible), credential on stdout
-      if pamu2fcfg >"$u2f_file"; then
+      # We explicitly pass origin and appid so the credential is portable across machines
+      if pamu2fcfg -o "$ORIGIN" -i "$APPID" >"$u2f_file"; then
         echo -e "${GREEN}✓ Primary YubiKey successfully registered!${NC}"
-        echo -e "File: ${BLUE}$u2f_file${NC}"
-        echo ""
-        echo -e "${GREY}Recorded credential:${NC}"
-        cat "$u2f_file"
         echo ""
         echo -e "${YELLOW}Note:${NC} If you recently enabled the U2F module, run a system update and re-login for PAM changes to apply."
+        echo -e "${GREY}You can view the file content from the 'View current U2F keys file' menu option.${NC}"
       else
         echo -e "${RED}Registration failed.${NC}"
         echo -e "Make sure your YubiKey supports FIDO2/U2F (see https://www.yubico.com/products/identifying-your-yubikey/) and try again."
@@ -146,13 +164,11 @@ _register_u2f_key() {
     echo -e "  2. Touch when it blinks"
     echo ""
     if gum confirm "Additional YubiKey inserted and ready?"; then
-      if pamu2fcfg -n >>"$u2f_file"; then
+      if pamu2fcfg -n -o "$ORIGIN" -i "$APPID" >>"$u2f_file"; then
         echo -e "${GREEN}✓ Additional YubiKey registered successfully!${NC}"
         echo ""
-        echo -e "${GREY}Updated content of $u2f_file:${NC}"
-        cat "$u2f_file"
-        echo ""
         echo -e "${YELLOW}Tip:${NC} For maximum compatibility keep all credentials for one user on a single line (edit manually if newlines appear)."
+        echo -e "${GREY}You can view the file content from the 'View current U2F keys file' menu option.${NC}"
       else
         echo -e "${RED}Failed to register additional key.${NC}"
       fi
@@ -196,10 +212,6 @@ _test_u2f_auth() {
     read -n 1 -s -r -p "Press any key to continue..."
     return
   fi
-
-  echo -e "${YELLOW}--- Testing 'login' PAM service ---${NC}"
-  pamtester login "$USER" authenticate || true
-  echo ""
 
   echo -e "${YELLOW}--- Testing 'sudo' PAM service ---${NC}"
   pamtester sudo "$USER" authenticate || true
