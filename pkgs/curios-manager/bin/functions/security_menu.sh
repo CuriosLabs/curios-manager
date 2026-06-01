@@ -6,9 +6,14 @@
 # Uses pamu2fcfg for login/sudo (respecting curios.security.u2f.origin + appid) and
 # systemd-cryptenroll for disk encryption.
 
-_get_u2f_enabled() {
+_get_security_enabled() {
   # Check via curios-update as documented (it delegates to nixos-option internally).
   # This is the first verification step for the security/U2F feature.
+  curios-update --nixos-option curios.security.enable 2>/dev/null |
+    sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "unknown"
+}
+
+_get_u2f_enabled() {
   curios-update --nixos-option curios.security.u2f.enable 2>/dev/null |
     sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "unknown"
 }
@@ -24,78 +29,65 @@ _get_u2f_appid() {
 }
 
 security_menu() {
-  local U2F_ENABLED
-  U2F_ENABLED=$(_get_u2f_enabled)
+  local SECURITY_ENABLED
+  SECURITY_ENABLED=$(_get_security_enabled)
 
-  if [[ "$U2F_ENABLED" != "true" ]]; then
-    echo -e "${YELLOW}U2F/FIDO2 authentication is currently DISABLED on this system.${NC}"
-    echo -e "YubiKey login (for greetd, cosmic-greeter, login and sudo) will not work until enabled."
+  if [[ "$SECURITY_ENABLED" != "true" ]]; then
+    echo -e "${YELLOW}CuriOS security module is currently DISABLED on this system.${NC}"
+    echo -e "Security menu will not work until enabled."
     echo ""
 
-    if gum confirm "Enable U2F/FIDO2 authentication with YubiKey now?"; then
-      echo -e "${BLUE}Enabling the security.u2f module...${NC}"
-      gum spin --spinner dot --title "Enabling module.." --show-error -- sudo curios-update --update-module curios.security.u2f.enable true
+    if gum confirm "Enable CuriOS security now?"; then
+      echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+      gum spin --spinner dot --title "Enabling module.." --show-error -- sudo curios-update --update-module curios.security.enable true
 
       echo ""
-      echo -e "${BLUE}Applying system configuration (nixos-rebuild). This can take several minutes...${NC}"
+      echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
       echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
-      echo ""
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
 
       # Re-check status after the update
-      U2F_ENABLED=$(_get_u2f_enabled)
-      if [[ "$U2F_ENABLED" == "true" ]]; then
-        echo -e "${GREEN}✓ U2F/FIDO2 authentication is now enabled!${NC}"
+      SECURITY_ENABLED=$(_get_security_enabled)
+      if [[ "$SECURITY_ENABLED" == "true" ]]; then
+        echo -e "${GREEN}✓ CuriOS security is now enabled!${NC}"
       else
         echo -e "${YELLOW}Module was activated but the live status is not yet 'true'. A reboot may be required.${NC}"
       fi
-      echo -e "${YELLOW}You may need to log out and log back in (or reboot) for the new PAM configuration to take full effect.${NC}"
-      echo ""
-      read -n 1 -s -r -p "Press any key to continue to the YubiKey registration menu..."
-      echo ""
     else
       main_menu
       return
     fi
   fi
 
-  if ! available pamu2fcfg; then
-    echo -e "${RED}pamu2fcfg not found!${NC}"
-    echo -e "This usually means ${BLUE}curios.security.u2f.enable${NC} is not active (or system not yet rebuilt)."
-    echo -e "Enable the module and run a full system update, then retry."
-    echo ""
-    read -n 1 -s -r -p "Press any key to continue..."
-    main_menu
-    return
-  fi
-
   local SECURITY_MENU
-  SECURITY_MENU=$(gum choose --header "YubiKey Security (PAM U2F + LUKS FIDO2) - Select an option:" \
-    "󰌾 Register primary YubiKey (PAM login/sudo)" \
-    "󰐕 Add additional YubiKey (PAM backup)" \
-    "🔐 Enroll YubiKey for LUKS FIDO2 disk decryption" \
-    " View current U2F keys file" \
-    "󰙨 Test PAM authentication (pamtester)" \
+  SECURITY_MENU=$(gum choose --header "YubiKey Security - Select an option:" \
+    "󰌾 Register primary YubiKey for user login/sudo (PAM)" \
+    "󰐕 Add additional YubiKey for user login/sudo (PAM)" \
+    "🔐 Enroll YubiKey for full disk decryption (FIDO2)" \
+    " View current PAM/U2F keys file" \
+    "󰙨 Test PAM authentication" \
     " Back")
 
   case $SECURITY_MENU in
-  "󰌾 Register primary YubiKey (PAM login/sudo)")
+  "󰌾 Register primary YubiKey for user login/sudo (PAM)")
+    _check_u2f_option
     _register_u2f_key "primary"
     security_menu
     ;;
-  "󰐕 Add additional YubiKey (PAM backup)")
+  "󰐕 Add additional YubiKey for user login/sudo (PAM)")
+    _check_u2f_option
     _register_u2f_key "additional"
     security_menu
     ;;
-  "🔐 Enroll YubiKey for LUKS FIDO2 disk decryption")
+  "🔐 Enroll YubiKey for full disk decryption (FIDO2)")
     _enroll_luks_fido2
     security_menu
     ;;
-  " View current U2F keys file")
+  " View current PAM/U2F keys file")
     _view_u2f_keys
     security_menu
     ;;
-  "󰙨 Test PAM authentication (pamtester)")
+  "󰙨 Test PAM authentication")
     _test_u2f_auth
     security_menu
     ;;
@@ -117,9 +109,6 @@ _register_u2f_key() {
   local APPID
   ORIGIN=$(_get_u2f_origin)
   APPID=$(_get_u2f_appid)
-
-  echo -e "${GREY}Using PAM U2F origin='${ORIGIN}' appid='${APPID}' (from system config)${NC}"
-  echo ""
 
   if [[ "$mode" == "primary" ]]; then
     if [[ -f "$u2f_file" ]]; then
@@ -152,13 +141,10 @@ _register_u2f_key() {
     if [[ ! -f "$u2f_file" ]]; then
       echo -e "${RED}No existing $u2f_file found.${NC}"
       echo -e "Register a primary key first."
-      read -n 1 -s -r -p "Press any key to continue..."
       return
     fi
 
     echo -e "${BLUE}Adding ADDITIONAL YubiKey for ${USER}${NC}"
-    echo -e "This appends a new credential (pamu2fcfg -n)."
-    echo -e "Recommended: use a second physical key as backup."
     echo -e "Steps:"
     echo -e "  1. Insert the ${GREEN}additional${NC} YubiKey"
     echo -e "  2. Touch when it blinks"
@@ -167,16 +153,52 @@ _register_u2f_key() {
       if pamu2fcfg -n -o "$ORIGIN" -i "$APPID" >>"$u2f_file"; then
         echo -e "${GREEN}✓ Additional YubiKey registered successfully!${NC}"
         echo ""
-        echo -e "${YELLOW}Tip:${NC} For maximum compatibility keep all credentials for one user on a single line (edit manually if newlines appear)."
         echo -e "${GREY}You can view the file content from the 'View current U2F keys file' menu option.${NC}"
       else
         echo -e "${RED}Failed to register additional key.${NC}"
       fi
     fi
   fi
+}
 
-  echo ""
-  read -n 1 -s -r -p "Press any key to continue..."
+_check_u2f_option() {
+  local U2F_ENABLED
+  U2F_ENABLED=$(_get_u2f_enabled)
+
+  if [[ "$U2F_ENABLED" != "true" ]]; then
+    echo -e "${YELLOW}PAM U2F authentication is currently DISABLED on this system.${NC}"
+    echo -e "YubiKey login (for greetd, cosmic-greeter, login and sudo) will not work until enabled."
+    echo ""
+
+    if gum confirm "Enable PAM U2F authentication with YubiKey now?"; then
+      echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+      gum spin --spinner dot --title "Enabling module.." --show-error -- sudo curios-update --update-module curios.security.u2f.enable true
+      echo ""
+      echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
+      echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+      gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
+
+      # Re-check status after the update
+      U2F_ENABLED=$(_get_u2f_enabled)
+      if [[ "$U2F_ENABLED" == "true" ]]; then
+        echo -e "${GREEN}✓ PAM U2F authentication is now enabled!${NC}"
+      else
+        echo -e "${YELLOW}Module was activated but the live status is not yet 'true'. A reboot may be required.${NC}"
+      fi
+      echo -e "${YELLOW}You may need to log out and log back in (or reboot) for the new PAM configuration to take full effect.${NC}"
+    else
+      security_menu
+      return
+    fi
+  fi
+
+  if ! available pamu2fcfg; then
+    echo -e "${RED}pamu2fcfg not found!${NC}"
+    echo -e "This usually means ${BLUE}curios.security.u2f.enable${NC} is not active (or system not yet rebuilt)."
+    echo -e "Enable the module and run a full system update, then retry."
+    security_menu
+    return
+  fi
 }
 
 _view_u2f_keys() {
@@ -193,13 +215,12 @@ _view_u2f_keys() {
     echo -e "${YELLOW}No U2F keys file found for this user yet.${NC}"
     echo -e "Use the registration options above to create one."
   fi
-  echo ""
-  read -n 1 -s -r -p "Press any key to continue..."
 }
 
 _test_u2f_auth() {
   echo -e "${BLUE}PAM U2F authentication test for ${USER}${NC}"
   echo -e "Note: because U2F is configured as 'sufficient', password authentication remains a working fallback."
+  echo -e "If U2F module is enabled and key registered, touching the YubiKey should authenticate without password."
   echo ""
 
   if ! available pamtester; then
@@ -208,19 +229,11 @@ _test_u2f_auth() {
     echo -e "You can still test manually:"
     echo -e "  nix-shell -p pamtester --command 'pamtester login $USER authenticate'"
     echo -e "  nix-shell -p pamtester --command 'pamtester sudo $USER authenticate'"
-    echo ""
-    read -n 1 -s -r -p "Press any key to continue..."
     return
   fi
 
   echo -e "${YELLOW}--- Testing 'sudo' PAM service ---${NC}"
   pamtester sudo "$USER" authenticate || true
-  echo ""
-
-  echo -e "${GREEN}Test complete.${NC} A successful U2F touch or password prompt means the stack is responsive."
-  echo -e "If U2F module is enabled and key registered, touching the YubiKey should authenticate without password."
-  echo ""
-  read -n 1 -s -r -p "Press any key to continue..."
 }
 
 #------------- LUKS FIDO2 enrollment functions
@@ -242,16 +255,17 @@ _count_luks_keyslots() {
     return
   fi
 
-  # luksDump on the encrypted partition requires root (standard users get
-  # "Device /dev/... is not a valid LUKS device" or lock errors).
-  local dump
-  if ! dump=$(sudo cryptsetup luksDump "$device" 2>/dev/null); then
-    # User probably cancelled sudo or device is inaccessible
+  # --dump-json-metadata gives structured output; jq counts real keyslots.
+  # This requires root because reading the LUKS header is privileged.
+  local count
+  if ! count=$(sudo cryptsetup --dump-json-metadata luksDump "$device" 2>/dev/null | jq '.keyslots | length' 2>/dev/null); then
+    # User probably cancelled sudo, device is inaccessible, or jq failed
     echo 0
     return
   fi
 
-  echo "$dump" | grep -c '^[[:space:]]*[0-9]\+:' || echo 0
+  # Ensure we output a clean integer
+  echo "$count" | tr -d '[:space:]'
 }
 
 # Check if the currently inserted YubiKey has a FIDO2 PIN set.
@@ -291,15 +305,12 @@ _enroll_luks_fido2() {
   if [[ "$LUKS_ENABLED" != "true" ]]; then
     echo -e "${YELLOW}This system does not appear to use CuriOS LUKS encryption.${NC}"
     echo -e "LUKS FIDO2 enrollment only makes sense on systems installed with full disk encryption."
-    echo ""
-    read -n 1 -s -r -p "Press any key to continue..."
     return
   fi
 
   if ! available systemd-cryptenroll; then
     echo -e "${RED}systemd-cryptenroll not found.${NC}"
     echo -e "This tool is required for FIDO2 LUKS enrollment."
-    read -n 1 -s -r -p "Press any key to continue..."
     return
   fi
 
@@ -318,7 +329,6 @@ _enroll_luks_fido2() {
     if [[ -z "$FIDO2_LIST" ]]; then
       echo -e "${RED}Still no FIDO2 device found.${NC}"
       echo -e "Make sure your key supports FIDO2 + the hmac-secret extension (most YubiKey 5 and newer)."
-      read -n 1 -s -r -p "Press any key to continue..."
       return
     fi
   fi
@@ -353,17 +363,15 @@ _enroll_luks_fido2() {
       else
         echo -e "${YELLOW}Could not confirm that a PIN was set. You can try again later with:${NC}"
         echo -e "    ykman fido access change-pin"
+        return
       fi
-      echo ""
-      read -n 1 -s -r -p "Press any key to continue..."
-      echo ""
     else
-      echo -e "${GREY}Skipping PIN setup. You can set it later with: ykman fido access change-pin${NC}"
-      echo ""
+      echo -e "${GREY}Skipping PIN setup. You can set it with: ykman or the Yubico authenticator app.${NC}"
+      return
     fi
     ;;
   "unknown")
-    echo -e "${GREY}Could not determine FIDO PIN status (ykman not available or no device).${NC}"
+    echo -e "${GREY}Could not determine FIDO PIN status (ykman not available or not a Yubikey device).${NC}"
     echo ""
     ;;
   esac
@@ -388,9 +396,6 @@ _enroll_luks_fido2() {
     else
       echo -e "${YELLOW}LUKS FIDO2 enrollment requires the module to be enabled.${NC}"
       echo -e "${YELLOW}You can enable it later from the Security menu.${NC}"
-      echo ""
-      read -n 1 -s -r -p "Press any key to return to the Security menu..."
-      echo ""
       return
     fi
   fi
@@ -402,68 +407,34 @@ _enroll_luks_fido2() {
   local KEYSLOT_COUNT
   KEYSLOT_COUNT=$(_count_luks_keyslots)
 
-  echo -e "Detected LUKS keyslots on /dev/disk/by-label/curiosystem: ${BLUE}${KEYSLOT_COUNT}${NC}"
-  echo ""
-
-  # Strong safety warnings - adapted based on existing keyslots
-  echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
-  echo -e "${RED}                    IMPORTANT SECURITY WARNING${NC}"
-  echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
-  echo ""
-  echo -e "${YELLOW}Enrolling a YubiKey for LUKS FIDO2 means:${NC}"
-  echo -e "  • This YubiKey will be able to unlock the disk at boot"
-  echo -e "  • If the YubiKey is lost, damaged, or not available, you will need"
-  echo -e "    another valid keyslot (passphrase or another key) to boot"
-  echo ""
-
-  if [[ "$KEYSLOT_COUNT" -ge 2 ]]; then
-    echo -e "${GREEN}Good news:${NC} You already have ${KEYSLOT_COUNT} keyslots."
-    echo -e "This gives you some redundancy."
-  elif [[ "$KEYSLOT_COUNT" -eq 1 ]]; then
-    echo -e "${YELLOW}You currently only have 1 keyslot${NC} (probably the original install passphrase)."
-    echo -e "It is ${RED}strongly recommended${NC} to have at least one backup method"
-    echo -e "(either a second YubiKey or a recovery key)."
+  # Safety warnings adapted based on existing keyslots
+  if [[ "$KEYSLOT_COUNT" -ge 1 ]]; then
+    echo -e "${GREEN}✓ You have ${KEYSLOT_COUNT} keyslot(s) configured.${NC}"
+    echo -e "At least one other method (likely a passphrase) can be used to decrypt the disk."
+    echo -e "${YELLOW}If the YubiKey is lost, damaged, or not available, you will need${NC}"
+    echo -e "${YELLOW}another valid keyslot (passphrase or another key) to boot.${NC}"
+    echo ""
   else
+    echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
+    echo -e "${RED}                    IMPORTANT SECURITY WARNING${NC}"
+    echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
+    echo ""
     echo -e "${RED}Warning: No keyslots detected!${NC} This is unusual on a working CuriOS system."
-  fi
-
-  echo ""
-  echo -e "${RED}Always keep at least one reliable way to unlock this disk${NC}"
-  echo -e "(passphrase or recovery key) in addition to any YubiKeys."
-  echo ""
-  echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
-  echo ""
-
-  if ! gum confirm "I understand the risks and will maintain at least one recovery method"; then
-    echo -e "${YELLOW}Enrollment cancelled for safety.${NC}"
-    read -n 1 -s -r -p "Press any key to continue..."
-    return
-  fi
-
-  # Offer to create a recovery key only if the user has very few keyslots
-  echo ""
-  if [[ "$KEYSLOT_COUNT" -le 1 ]]; then
-    if gum confirm "Create an additional recovery key now? (recommended when you only have one keyslot)" --default=true; then
+    echo -e "${RED}Without any keyslots, you risk being locked out of your disk.${NC}"
+    echo ""
+    echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    if gum confirm "Create a recovery key now?" --default=true; then
       echo -e "${BLUE}Creating a LUKS recovery key...${NC}"
-      echo -e "You will need to enter an existing passphrase."
+      echo -e "You will need to enter passphrase."
       echo ""
       sudo systemd-cryptenroll --recovery-key /dev/disk/by-label/curiosystem || true
       echo ""
       echo -e "${YELLOW}Store the printed recovery key in a safe place (password manager, printed paper, etc.).${NC}"
-      read -n 1 -s -r -p "Press any key after you have safely stored the recovery key..."
-      echo ""
     fi
-  else
-    echo -e "${GREY}(You already have ${KEYSLOT_COUNT} keyslots — skipping automatic recovery key suggestion.)${NC}"
-    echo -e "${GREY}You can still create one later with: systemd-cryptenroll --recovery-key /dev/disk/by-label/curiosystem${NC}"
-    echo ""
   fi
 
   echo -e "${BLUE}Ready to enroll the FIDO2 key for disk decryption.${NC}"
-  echo ""
-  echo -e "Recommended settings:"
-  echo -e "  • Device: /dev/disk/by-label/curiosystem (CuriOS standard)"
-  echo -e "  • With client PIN: yes (recommended for security)"
   echo ""
   echo -e "You will be prompted for:"
   echo -e "  1. An existing LUKS passphrase (to authorize the new keyslot)"
@@ -473,13 +444,8 @@ _enroll_luks_fido2() {
 
   if ! gum confirm "Proceed with FIDO2 enrollment now?"; then
     echo -e "${YELLOW}Enrollment cancelled.${NC}"
-    read -n 1 -s -r -p "Press any key to continue..."
     return
   fi
-
-  echo ""
-  echo -e "${BLUE}Running systemd-cryptenroll...${NC}"
-  echo ""
 
   # Perform the actual enrollment
   if sudo systemd-cryptenroll \
@@ -505,5 +471,4 @@ _enroll_luks_fido2() {
     echo ""
   fi
 
-  read -n 1 -s -r -p "Press any key to continue..."
 }

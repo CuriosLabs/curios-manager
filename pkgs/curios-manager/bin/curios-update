@@ -193,7 +193,7 @@ fi
 
 # This script must be run as root for --upgrade, --update, --export, --add-pkg and --update-module option
 if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 || $ADD_PKG -eq 1 || $UPDATE_MODULES -eq 1 ]]; then
-  echo -e "${RED}This script MUST be run as root: sudo curios-update --add-pkg PKG_NAME${NC}" >&2
+  echo -e "${RED}This script MUST be run as root!${NC}" >&2
   exit 1
 fi
 
