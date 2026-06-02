@@ -129,16 +129,48 @@ _curios_apps_menu() {
   declare -A DISPLAY_TO_PATH
   declare -A DISPLAY_TO_STATUS
 
+  # Build a Nix expression to fetch all option descriptions in one evaluation
+  local NIX_PATHS
+  NIX_PATHS=$(echo "$BOOLS_DATA" | jq -r '.path | join(".") | "\"" + . + "\""' | tr '\n' ' ')
+
+  local NIX_EXPR_FILE
+  NIX_EXPR_FILE=$(mktemp)
+  cat > "$NIX_EXPR_FILE" <<EOF
+    let
+      nixos = import <nixpkgs/nixos> {};
+      lib = nixos.pkgs.lib;
+      paths = [ $NIX_PATHS ];
+      getDesc = p:
+        let
+          pathList = lib.splitString "." p;
+          opt = lib.attrByPath pathList null nixos.options;
+        in
+          if opt == null then null
+          else if builtins.isAttrs opt && builtins.hasAttr "description" opt then opt.description
+          else null;
+    in
+      builtins.listToAttrs (map (p: { name = p; value = getDesc p; }) paths)
+EOF
+  export NIX_EXPR_FILE
+
   # Helper function to fetch app details, exported for gum spin subshell
   # shellcheck disable=SC2329
   _curios_fetch_apps_data() {
     local item
+    local ALL_DESCRIPTIONS
+    ALL_DESCRIPTIONS=$(nix eval --json --impure --file "$NIX_EXPR_FILE" 2>/dev/null)
+
     while read -r item; do
       local path_arr status dot_path description category setting display
       path_arr=$(echo "$item" | jq -c '.path')
       status=$(echo "$item" | jq -r '.status')
       dot_path=$(echo "$item" | jq -r '.path | join(".")')
-      description=$(nixos-option "$dot_path" 2>/dev/null | sed -n '/^Description:$/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+      if [ -n "$ALL_DESCRIPTIONS" ]; then
+        description=$(echo "$ALL_DESCRIPTIONS" | jq -r --arg p "$dot_path" '.[$p] // empty')
+      else
+        description=""
+      fi
 
       # Format the display name: (category) setting
       # If the path ends in .enable, we strip it to show the app name as the setting
@@ -181,6 +213,9 @@ _curios_apps_menu() {
     DISPLAY_TO_PATH["$display"]="$path_arr"
     DISPLAY_TO_STATUS["$display"]="$status"
   done <<<"$FETCHED_ITEMS"
+
+  # Clean up temporary Nix expression file
+  rm -f "$NIX_EXPR_FILE"
 
   local SELECTED_STR
   SELECTED_STR=$(
