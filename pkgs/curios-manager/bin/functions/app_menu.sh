@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-add_package_to_settings() {
+_add_package_to_settings() {
   local PKG="$1"
   local SETTINGS_FILE="/etc/nixos/settings.nix"
 
@@ -30,7 +30,7 @@ add_package_to_settings() {
   fi
 }
 
-remove_package_from_settings() {
+_remove_package_from_settings() {
   local PKG="$1"
   local SETTINGS_FILE="/etc/nixos/settings.nix"
 
@@ -45,7 +45,7 @@ remove_package_from_settings() {
   fi
 
   echo -e "${BLUE}Removing package pkgs.$PKG from $SETTINGS_FILE...${NC}"
-  # Remove the line containing pkgs.PKG. We assume it's on its own line as per add_package_to_settings.
+  # Remove the line containing pkgs.PKG. We assume it's on its own line as per _add_package_to_settings.
   if sudo sed -i "/^[[:space:]]*pkgs\.${PKG}[[:space:]]*$/d" "$SETTINGS_FILE"; then
     echo -e "${GREEN}Package pkgs.$PKG removed from $SETTINGS_FILE${NC}"
     gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
@@ -61,7 +61,7 @@ remove_package_from_settings() {
   fi
 }
 
-search_new_package() {
+_search_new_package() {
   echo -e "Find a package by name:"
   SEARCH_NAME=$(gum input)
 
@@ -79,10 +79,10 @@ search_new_package() {
   fi
 
   PKG_NAME=$(echo "$CHOSEN_PKG" | cut -f1)
-  add_package_to_settings "$PKG_NAME"
+  _add_package_to_settings "$PKG_NAME"
 }
 
-choose_package_to_remove() {
+_choose_package_to_remove() {
   local SETTINGS_FILE="/etc/nixos/settings.nix"
 
   # Extract packages from the list (only those NOT commented out)
@@ -102,11 +102,11 @@ choose_package_to_remove() {
   fi
 
   if gum confirm "Are you sure you want to remove pkgs.$CHOSEN_PKG?"; then
-    remove_package_from_settings "$CHOSEN_PKG"
+    _remove_package_from_settings "$CHOSEN_PKG"
   fi
 }
 
-curios_apps_menu() {
+_curios_apps_menu() {
   local SETTINGS_FILE="/etc/nixos/modules.json"
   if [ ! -f "$SETTINGS_FILE" ]; then
     echo -e "${YELLOW}Settings file $SETTINGS_FILE not found!${NC}"
@@ -247,16 +247,16 @@ app_menu() {
     " Open Flatpak Store" \
     " Back")
   case $APP_MENU in
+  "󰄬 Install/Uninstall CuriOS Apps")
+    _curios_apps_menu
+    app_menu
+    ;;
   " Find/Add a NixOS package")
-    search_new_package
+    _search_new_package
     app_menu
     ;;
   "󱎘 Remove a NixOS package")
-    choose_package_to_remove
-    app_menu
-    ;;
-  "󰄬 Install/Uninstall CuriOS Apps")
-    curios_apps_menu
+    _choose_package_to_remove
     app_menu
     ;;
   "󰣆 Applications menu")
