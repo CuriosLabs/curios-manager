@@ -4,9 +4,9 @@
 # This helper is designed to be called by _curios_apps_menu via gum spin.
 #
 # Usage:
-#   fetch_app_descriptions.sh <nix_expr_file>
+#   fetch_app_descriptions.sh <nix_expr_file> <bools_data_file>
 #
-# Reads JSON objects {path: [...], status: bool} from stdin,
+# Reads JSON objects {path: [...], status: bool} from <bools_data_file>,
 # outputs lines in the format: display|path_json|status
 
 set -euo pipefail
@@ -14,9 +14,16 @@ set -euo pipefail
 main() {
   local NIX_EXPR_FILE
   NIX_EXPR_FILE="${1:-}"
+  local BOOLS_DATA_FILE
+  BOOLS_DATA_FILE="${2:-}"
 
   if [ -z "$NIX_EXPR_FILE" ] || [ ! -f "$NIX_EXPR_FILE" ]; then
     echo "Error: Nix expression file not provided or missing." >&2
+    exit 1
+  fi
+
+  if [ -z "$BOOLS_DATA_FILE" ] || [ ! -f "$BOOLS_DATA_FILE" ]; then
+    echo "Error: Bools data file not provided or missing." >&2
     exit 1
   fi
 
@@ -62,7 +69,7 @@ main() {
     display="${display//,/;}"
 
     echo "$display|$path_arr|$status"
-  done
+  done < "$BOOLS_DATA_FILE"
 }
 
 main "$@"

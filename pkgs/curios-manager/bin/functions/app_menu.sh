@@ -150,13 +150,18 @@ _curios_apps_menu() {
     in
       builtins.listToAttrs (map (p: { name = p; value = getDesc p; }) paths)
 EOF
+  # Write bools data to a temp file so we don't rely on gum spin forwarding stdin
+  local BOOLS_DATA_FILE
+  BOOLS_DATA_FILE=$(mktemp)
+  echo "$BOOLS_DATA" >"$BOOLS_DATA_FILE"
+
   # Determine absolute path to helper script.
   # __dir is defined by curios-manager (the sourcing script).
   # shellcheck disable=SC2154
   local FETCH_HELPER="${__dir}/functions/fetch_app_descriptions.sh"
 
   local FETCHED_ITEMS
-  FETCHED_ITEMS=$(gum spin --spinner dot --title "Loading CuriOS Apps configuration..." -- "$FETCH_HELPER" "$NIX_EXPR_FILE" <<<"$BOOLS_DATA")
+  FETCHED_ITEMS=$(gum spin --spinner dot --title "Loading CuriOS Apps configuration..." -- "$FETCH_HELPER" "$NIX_EXPR_FILE" "$BOOLS_DATA_FILE")
 
   while IFS='|' read -r display path_arr status; do
     [ -z "$display" ] && continue
@@ -166,8 +171,8 @@ EOF
     DISPLAY_TO_STATUS["$display"]="$status"
   done <<<"$FETCHED_ITEMS"
 
-  # Clean up temporary Nix expression file
-  rm -f "$NIX_EXPR_FILE"
+  # Clean up temporary files
+  rm -f "$NIX_EXPR_FILE" "$BOOLS_DATA_FILE"
 
   local SELECTED_STR
   SELECTED_STR=$(
