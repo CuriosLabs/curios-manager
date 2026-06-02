@@ -112,7 +112,6 @@ _curios_apps_menu() {
     echo -e "${YELLOW}Settings file $SETTINGS_FILE not found!${NC}"
     echo -e "${YELLOW}Creating a new one...${NC}"
     sudo curios-update --export
-    #sudo ./pkgs/curios-manager/bin/curios-update --export
   fi
 
   # 1. Read all boolean paths and their current values
@@ -135,7 +134,7 @@ _curios_apps_menu() {
 
   local NIX_EXPR_FILE
   NIX_EXPR_FILE=$(mktemp)
-  cat > "$NIX_EXPR_FILE" <<EOF
+  cat >"$NIX_EXPR_FILE" <<EOF
     let
       nixos = import <nixpkgs/nixos> {};
       lib = nixos.pkgs.lib;
@@ -151,11 +150,10 @@ _curios_apps_menu() {
     in
       builtins.listToAttrs (map (p: { name = p; value = getDesc p; }) paths)
 EOF
-  # Determine absolute path to helper script (works when sourced or run directly)
-  local __app_menu_dir
-  __app_menu_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local FETCH_HELPER
-  FETCH_HELPER="${__app_menu_dir}/fetch_app_descriptions.sh"
+  # Determine absolute path to helper script.
+  # __dir is defined by curios-manager (the sourcing script).
+  # shellcheck disable=SC2154
+  local FETCH_HELPER="${__dir}/functions/fetch_app_descriptions.sh"
 
   local FETCHED_ITEMS
   FETCHED_ITEMS=$(gum spin --spinner dot --title "Loading CuriOS Apps configuration..." -- "$FETCH_HELPER" "$NIX_EXPR_FILE" <<<"$BOOLS_DATA")
