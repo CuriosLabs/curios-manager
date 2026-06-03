@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-add_package_to_settings() {
+_add_package_to_settings() {
   local PKG="$1"
   local SETTINGS_FILE="/etc/nixos/settings.nix"
 
@@ -30,7 +30,7 @@ add_package_to_settings() {
   fi
 }
 
-remove_package_from_settings() {
+_remove_package_from_settings() {
   local PKG="$1"
   local SETTINGS_FILE="/etc/nixos/settings.nix"
 
@@ -45,7 +45,7 @@ remove_package_from_settings() {
   fi
 
   echo -e "${BLUE}Removing package pkgs.$PKG from $SETTINGS_FILE...${NC}"
-  # Remove the line containing pkgs.PKG. We assume it's on its own line as per add_package_to_settings.
+  # Remove the line containing pkgs.PKG. We assume it's on its own line as per _add_package_to_settings.
   if sudo sed -i "/^[[:space:]]*pkgs\.${PKG}[[:space:]]*$/d" "$SETTINGS_FILE"; then
     echo -e "${GREEN}Package pkgs.$PKG removed from $SETTINGS_FILE${NC}"
     gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
@@ -61,7 +61,7 @@ remove_package_from_settings() {
   fi
 }
 
-search_new_package() {
+_search_new_package() {
   echo -e "Find a package by name:"
   SEARCH_NAME=$(gum input)
 
@@ -79,10 +79,10 @@ search_new_package() {
   fi
 
   PKG_NAME=$(echo "$CHOSEN_PKG" | cut -f1)
-  add_package_to_settings "$PKG_NAME"
+  _add_package_to_settings "$PKG_NAME"
 }
 
-choose_package_to_remove() {
+_choose_package_to_remove() {
   local SETTINGS_FILE="/etc/nixos/settings.nix"
 
   # Extract packages from the list (only those NOT commented out)
@@ -102,17 +102,16 @@ choose_package_to_remove() {
   fi
 
   if gum confirm "Are you sure you want to remove pkgs.$CHOSEN_PKG?"; then
-    remove_package_from_settings "$CHOSEN_PKG"
+    _remove_package_from_settings "$CHOSEN_PKG"
   fi
 }
 
-curios_apps_menu() {
+_curios_apps_menu() {
   local SETTINGS_FILE="/etc/nixos/modules.json"
   if [ ! -f "$SETTINGS_FILE" ]; then
     echo -e "${YELLOW}Settings file $SETTINGS_FILE not found!${NC}"
     echo -e "${YELLOW}Creating a new one...${NC}"
     sudo curios-update --export
-    #sudo ./pkgs/curios-manager/bin/curios-update --export
   fi
 
   # 1. Read all boolean paths and their current values
@@ -129,16 +128,48 @@ curios_apps_menu() {
   declare -A DISPLAY_TO_PATH
   declare -A DISPLAY_TO_STATUS
 
+  # Build a Nix expression to fetch all option descriptions in one evaluation
+  local NIX_PATHS
+  NIX_PATHS=$(echo "$BOOLS_DATA" | jq -r '.path | join(".") | "\"" + . + "\""' | tr '\n' ' ')
+
+  local NIX_EXPR_FILE
+  NIX_EXPR_FILE=$(mktemp)
+  cat > "$NIX_EXPR_FILE" <<EOF
+    let
+      nixos = import <nixpkgs/nixos> {};
+      lib = nixos.pkgs.lib;
+      paths = [ $NIX_PATHS ];
+      getDesc = p:
+        let
+          pathList = lib.splitString "." p;
+          opt = lib.attrByPath pathList null nixos.options;
+        in
+          if opt == null then null
+          else if builtins.isAttrs opt && builtins.hasAttr "description" opt then opt.description
+          else null;
+    in
+      builtins.listToAttrs (map (p: { name = p; value = getDesc p; }) paths)
+EOF
+  export NIX_EXPR_FILE
+
   # Helper function to fetch app details, exported for gum spin subshell
   # shellcheck disable=SC2329
   _curios_fetch_apps_data() {
     local item
+    local ALL_DESCRIPTIONS
+    ALL_DESCRIPTIONS=$(nix eval --json --impure --file "$NIX_EXPR_FILE" 2>/dev/null)
+
     while read -r item; do
       local path_arr status dot_path description category setting display
       path_arr=$(echo "$item" | jq -c '.path')
       status=$(echo "$item" | jq -r '.status')
       dot_path=$(echo "$item" | jq -r '.path | join(".")')
-      description=$(nixos-option "$dot_path" 2>/dev/null | sed -n '/^Description:$/{n;p}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+      if [ -n "$ALL_DESCRIPTIONS" ]; then
+        description=$(echo "$ALL_DESCRIPTIONS" | jq -r --arg p "$dot_path" '.[$p] // empty')
+      else
+        description=""
+      fi
 
       # Format the display name: (category) setting
       # If the path ends in .enable, we strip it to show the app name as the setting
@@ -181,6 +212,9 @@ curios_apps_menu() {
     DISPLAY_TO_PATH["$display"]="$path_arr"
     DISPLAY_TO_STATUS["$display"]="$status"
   done <<<"$FETCHED_ITEMS"
+
+  # Clean up temporary Nix expression file
+  rm -f "$NIX_EXPR_FILE"
 
   local SELECTED_STR
   SELECTED_STR=$(
@@ -247,16 +281,16 @@ app_menu() {
     " Open Flatpak Store" \
     " Back")
   case $APP_MENU in
+  "󰄬 Install/Uninstall CuriOS Apps")
+    _curios_apps_menu
+    app_menu
+    ;;
   " Find/Add a NixOS package")
-    search_new_package
+    _search_new_package
     app_menu
     ;;
   "󱎘 Remove a NixOS package")
-    choose_package_to_remove
-    app_menu
-    ;;
-  "󰄬 Install/Uninstall CuriOS Apps")
-    curios_apps_menu
+    _choose_package_to_remove
     app_menu
     ;;
   "󰣆 Applications menu")
