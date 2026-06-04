@@ -35,6 +35,7 @@ main_menu() {
       echo -e "${RED}Nix garbage collector failed!${NC}"
       exit 1
     fi
+    sudo whoami 1>/dev/null # Force prompt for sudo password now
     gum spin --spinner dot --title "Upgrading packages..." --show-error -- sudo nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
     status=$?
     if [ $status -ne 0 ]; then

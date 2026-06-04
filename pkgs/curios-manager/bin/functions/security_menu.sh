@@ -39,11 +39,13 @@ security_menu() {
 
     if gum confirm "Enable CuriOS security now?"; then
       echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
       gum spin --spinner dot --title "Enabling module.." --show-error -- sudo curios-update --update-module curios.security.enable true
 
       echo ""
       echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
       echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
 
       # Re-check status after the update
@@ -172,10 +174,12 @@ _check_u2f_option() {
 
     if gum confirm "Enable PAM U2F authentication with YubiKey now?"; then
       echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
       gum spin --spinner dot --title "Enabling module.." --show-error -- sudo curios-update --update-module curios.security.u2f.enable true
       echo ""
       echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
       echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
 
       # Re-check status after the update
@@ -387,9 +391,11 @@ _enroll_luks_fido2() {
     echo ""
     if gum confirm "Enable the LUKS FIDO2 module now?"; then
       echo -e "${BLUE}Enabling curios.security.luksFido2.enable...${NC}"
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
       gum spin --spinner dot --title "Enabling module..." --show-error -- sudo curios-update --update-module curios.security.luksFido2.enable true
       echo ""
       echo -e "${BLUE}Applying system configuration...${NC}"
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
       echo -e "${GREEN}Module enabled.${NC}"
       echo ""
