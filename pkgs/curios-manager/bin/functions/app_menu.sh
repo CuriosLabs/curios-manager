@@ -134,7 +134,7 @@ _curios_apps_menu() {
 
   local NIX_EXPR_FILE
   NIX_EXPR_FILE=$(mktemp)
-  cat > "$NIX_EXPR_FILE" <<EOF
+  cat >"$NIX_EXPR_FILE" <<EOF
     let
       nixos = import <nixpkgs/nixos> {};
       lib = nixos.pkgs.lib;
