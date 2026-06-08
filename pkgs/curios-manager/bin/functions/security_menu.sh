@@ -657,7 +657,14 @@ _enable_secure_boot() {
 
     if gum confirm "Rebuild and enroll Secure Boot keys now?"; then
       echo -e "${BLUE}Applying system configuration to enroll keys...${NC}"
-      sudo sbctl enroll-keys --microsoft --firmware-builtin
+      if ! sudo sbctl enroll-keys --microsoft --firmware-builtin; then
+        echo -e "${RED}Failed to enroll Secure Boot keys.${NC}"
+        echo -e "${YELLOW}Please ensure you are in UEFI Setup Mode and try again.${NC}"
+        return
+      fi
+      echo -e "${GREEN}✓ Secure Boot keys enrolled successfully.${NC}"
+      echo ""
+      sudo whoami 1>/dev/null
       gum spin --spinner dot --title "Enabling secure boot module..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.enable true
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
       echo ""
