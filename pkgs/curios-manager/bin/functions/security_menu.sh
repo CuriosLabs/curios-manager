@@ -63,16 +63,16 @@ security_menu() {
 
   local SECURITY_MENU
   SECURITY_MENU=$(gum choose --header "YubiKey Security - Select an option:" \
-    "󰌾 Register primary YubiKey for user login/sudo (PAM)" \
+    "🔑 Register primary YubiKey for user login/sudo (PAM)" \
     "󰐕 Add additional YubiKey for user login/sudo (PAM)" \
     "🔐 Enroll YubiKey for full disk decryption (FIDO2)" \
-    "🔒 Enable Secure Boot (Limine)" \
+    "🔗 Enable Secure Boot (Limine)" \
     " View current PAM/U2F keys file" \
     "󰙨 Test PAM authentication" \
     " Back")
 
   case $SECURITY_MENU in
-  "󰌾 Register primary YubiKey for user login/sudo (PAM)")
+  "🔑 Register primary YubiKey for user login/sudo (PAM)")
     _check_u2f_option
     _register_u2f_key "primary"
     security_menu
@@ -86,7 +86,7 @@ security_menu() {
     _enroll_luks_fido2
     security_menu
     ;;
-  "🔒 Enable Secure Boot (Limine)")
+  "🔗 Enable Secure Boot (Limine)")
     _enable_secure_boot
     security_menu
     ;;
@@ -520,6 +520,12 @@ _enable_secure_boot() {
     return
   fi
 
+  if ! available sbctl; then
+    echo -e "${RED}sbctl command not found!${NC}"
+    echo -e "This is required to check Secure Boot status."
+    return
+  fi
+
   # Step 1: Check if Limine is enabled
   local LIMINE_ENABLED
   LIMINE_ENABLED=$(_get_limine_enabled)
@@ -626,41 +632,24 @@ _enable_secure_boot() {
     fi
   fi
 
-  # Step 3: Check if Secure Boot module is enabled
-  local SB_MODULE_ENABLED
-  SB_MODULE_ENABLED=$(_get_secure_boot_module_enabled)
-
-  if [[ "$SB_MODULE_ENABLED" != "true" ]]; then
-    echo -e "${YELLOW}The Secure Boot module is not yet enabled in your configuration.${NC}"
-    echo -e "Enabling it will generate Secure Boot keys automatically."
-    echo ""
-
-    if gum confirm "Enable Secure Boot module now?"; then
-      echo -e "${BLUE}Enabling Secure Boot module...${NC}"
-      sudo whoami 1>/dev/null
-      gum spin --spinner dot --title "Enabling module..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.enable true
-      echo ""
-      # Create Secure Boot keys manually (as recommended in NixOS wiki)
-      if [[ ! -d /var/lib/sbctl ]] || [[ -z "$(ls -A /var/lib/sbctl 2>/dev/null)" ]]; then
-        echo -e "${BLUE}Creating Secure Boot keys...${NC}"
-        sudo sbctl create-keys
-      fi
-      echo ""
-      echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
-      sudo whoami 1>/dev/null
-      gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
-      echo -e "${GREEN}✓ Secure Boot module enabled and keys generated.${NC}"
-      echo ""
-      # Re-check status after rebuild
-      SB_STATUS=$(_get_secure_boot_status)
-      SB_MODULE_ENABLED=$(_get_secure_boot_module_enabled)
-    else
-      echo -e "${YELLOW}Secure Boot module is required. You can enable it later.${NC}"
+  # Step 3: Create Secure Boot keys manually (as recommended in NixOS wiki)
+  local SBCTL_STATUS
+  SBCTL_STATUS=$(sudo sbctl status 2>/dev/null || true)
+  if echo "$SBCTL_STATUS" | grep -q "sbctl is not installed" && echo "$SBCTL_STATUS" | grep -q "Secure Boot:.*Disabled"; then
+    echo -e "${BLUE}Creating Secure Boot keys...${NC}"
+    sudo sbctl create-keys
+    # Verify that keys were created successfully
+    local SBCTL_STATUS_AFTER
+    SBCTL_STATUS_AFTER=$(sudo sbctl status 2>/dev/null || true)
+    if ! echo "$SBCTL_STATUS_AFTER" | grep -q "sbctl is installed"; then
+      echo -e "${RED}Failed to create Secure Boot keys. sbctl is still not installed.${NC}"
+      echo -e "${YELLOW}Please check the error above and try again.${NC}"
       return
     fi
+    echo -e "${GREEN}✓ Secure Boot keys created successfully.${NC}"
   fi
 
-  # Step 4: Check if we are in Setup Mode
+  # Step 4: Check if we are in UEFI Setup Mode
   if [[ "$SB_STATUS" == *"setup"* ]]; then
     echo -e "${GREEN}✓ System is in UEFI Secure Boot Setup Mode.${NC}"
     echo -e "${BLUE}Rebuilding the system will now enroll the generated keys automatically.${NC}"
@@ -668,7 +657,8 @@ _enable_secure_boot() {
 
     if gum confirm "Rebuild and enroll Secure Boot keys now?"; then
       echo -e "${BLUE}Applying system configuration to enroll keys...${NC}"
-      sudo whoami 1>/dev/null
+      sudo sbctl enroll-keys --microsoft --firmware-builtin
+      gum spin --spinner dot --title "Enabling secure boot module..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.enable true
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
       echo ""
       # Verify
