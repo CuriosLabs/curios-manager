@@ -693,6 +693,9 @@ _enable_secure_boot() {
       else
         echo -e "${YELLOW}Keys were enrolled but Secure Boot is not yet reported as enabled.${NC}"
         echo -e "${YELLOW}A reboot may be required. Please run this menu again after rebooting.${NC}"
+        if gum confirm "Reboot now?"; then
+          systemctl reboot
+        fi
       fi
     else
       echo -e "${YELLOW}Rebuild cancelled. Run this menu again when ready to enroll keys.${NC}"
