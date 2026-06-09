@@ -603,8 +603,8 @@ _enable_secure_boot() {
   # If not present, a firmware update may be required.
   local DB_OUTPUT
   DB_OUTPUT=$(efi-readvar -v db 2>/dev/null || true)
-  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -q "Windows UEFI CA 2023"; then
-    echo -e "${YELLOW}WARNING: The Windows UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
+  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -qE "Windows UEFI CA 2023|Microsoft UEFI CA 2023"; then
+    echo -e "${YELLOW}WARNING: The Windows UEFI CA 2023 / Microsoft UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
     echo -e "This certificate is required for Secure Boot with the --microsoft flag in sbctl."
     echo -e "A firmware update may be needed to add this certificate."
     echo ""
@@ -614,7 +614,7 @@ _enable_secure_boot() {
       system_menu
       return
     else
-      echo -e "${YELLOW}Continuing without the Windows UEFI CA 2023 certificate. Secure Boot may fail.${NC}"
+      echo -e "${YELLOW}Continuing without the Windows UEFI CA 2023 / Microsoft UEFI CA 2023 certificate. Secure Boot may fail.${NC}"
       echo ""
     fi
   fi
@@ -681,6 +681,11 @@ _enable_secure_boot() {
       echo -e "${GREEN}✓ Secure Boot keys enrolled successfully.${NC}"
       echo ""
       sudo whoami 1>/dev/null
+      if [[ "$CERT_ROM" == true ]]; then
+        gum spin --spinner dot --title "Enabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware true
+      else
+        gum spin --spinner dot --title "Disabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware false
+      fi
       gum spin --spinner dot --title "Enabling secure boot module..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.enable true
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
       echo ""
