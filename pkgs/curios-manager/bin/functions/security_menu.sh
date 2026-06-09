@@ -520,6 +520,12 @@ _enable_secure_boot() {
     return
   fi
 
+  if ! available efi-readvar; then
+    echo -e "${RED}efi-readvar command not found!${NC}"
+    echo -e "This is required to check Secure Boot certificates."
+    return
+  fi
+
   if ! available sbctl; then
     echo -e "${RED}sbctl command not found!${NC}"
     echo -e "This is required to check Secure Boot status."
@@ -592,13 +598,13 @@ _enable_secure_boot() {
     fi
   fi
 
-  # Step 2c: Check if the Microsoft UEFI CA 2023 certificate is present in db
+  # Step 2c: Check if the Windows UEFI CA 2023 certificate is present in db
   # This certificate is needed for Secure Boot with the --microsoft flag in sbctl.
   # If not present, a firmware update may be required.
   local DB_OUTPUT
   DB_OUTPUT=$(efi-readvar -v db 2>/dev/null || true)
-  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -q "Microsoft UEFI CA 2023"; then
-    echo -e "${YELLOW}WARNING: The Microsoft UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
+  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -q "Windows UEFI CA 2023"; then
+    echo -e "${YELLOW}WARNING: The Windows UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
     echo -e "This certificate is required for Secure Boot with the --microsoft flag in sbctl."
     echo -e "A firmware update may be needed to add this certificate."
     echo ""
@@ -608,7 +614,7 @@ _enable_secure_boot() {
       system_menu
       return
     else
-      echo -e "${YELLOW}Continuing without the Microsoft UEFI CA 2023 certificate. Secure Boot may fail.${NC}"
+      echo -e "${YELLOW}Continuing without the Windows UEFI CA 2023 certificate. Secure Boot may fail.${NC}"
       echo ""
     fi
   fi
@@ -623,16 +629,16 @@ _enable_secure_boot() {
   elif [[ -n "$DB_OUTPUT" ]]; then
     CERT_ROM=false
     echo -e "${YELLOW}WARNING: The Microsoft Option ROM UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
-    echo -e "This certificate is required for hardware Option ROMs (GPU, NIC firmware, etc.) with Secure Boot."
-    echo -e "Missing this certificate may cause hardware to not initialize with Secure Boot enabled."
+    echo -e "This certificate is ${YELLOW}ONLY${NC} needed for certain hardware Option ROMs (e.g., discrete NVIDIA GPUs, some NICs)."
+    echo -e "Systems with integrated graphics (e.g., AMD Ryzen with iGPU, Intel integrated) typically do not require it."
     echo ""
-    echo -e "You can update the firmware from the System menu (${BLUE} Firmware${NC})."
+    echo -e "You can update the firmware from the System menu (${BLUE} Firmware${NC}) if you suspect you need it."
     echo ""
     if gum confirm "Would you like to go to the System menu to update the firmware now?"; then
       system_menu
       return
     else
-      echo -e "${YELLOW}Continuing without the Microsoft Option ROM UEFI CA 2023 certificate. Hardware may not work correctly with Secure Boot.${NC}"
+      echo -e "${YELLOW}Continuing without the Microsoft Option ROM UEFI CA 2023 certificate. This is usually fine for integrated graphics systems.${NC}"
       echo ""
     fi
   fi
@@ -712,12 +718,12 @@ _enable_secure_boot() {
   echo -e "  2. In the Limine boot menu, press ${GREEN}S${NC} to enter ${BLUE}Firmware Setup${NC}"
   echo -e "  3. In the UEFI firmware, find the Secure Boot settings"
   echo -e "  4. Select ${BLUE}Reset to Setup Mode${NC} or clear all keys"
-  echo -e "  5. Save and exit, rebooting back to NixOS"
+  echo -e "  5. Save and exit, rebooting back to CuriOS"
   echo ""
   echo -e "${YELLOW}Important:${NC} Do not select 'Clear All Secure Boot Keys' on ThinkPad devices."
   echo -e "Use 'Reset to Setup Mode' instead."
   echo ""
-  echo -e "Once back in NixOS, open this menu again to complete the enrollment."
+  echo -e "Once back in CuriOS, open this menu again to complete the enrollment."
   echo ""
 
   if gum confirm "Reboot now to enter Firmware Setup?"; then
