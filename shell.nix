@@ -6,6 +6,7 @@ pkgs.mkShell {
     btop
     curl
     duf
+    efitools
     fastfetch
     fd
     fwupd
@@ -21,6 +22,7 @@ pkgs.mkShell {
     pamtester
     #nvtopPackages.full
     restic
+    sbctl
     smartmontools
     terminaltexteffects
     wget
