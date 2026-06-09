@@ -681,6 +681,7 @@ _enable_secure_boot() {
       echo -e "${GREEN}✓ Secure Boot keys enrolled successfully.${NC}"
       echo ""
       sudo whoami 1>/dev/null
+      # NOTE: not sure if it is needed - `sbctl enroll-keys --microsoft` might download certificates needed for --firmware-builtin
       if [[ "$CERT_ROM" == true ]]; then
         gum spin --spinner dot --title "Enabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware true
       else
