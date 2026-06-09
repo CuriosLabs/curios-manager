@@ -616,7 +616,12 @@ _enable_secure_boot() {
   # Step 2d: Check if the Microsoft Option ROM UEFI CA 2023 certificate is present in db
   # This certificate is needed for hardware Option ROMs (GPU, NIC firmware, etc.)
   # Some devices require this certificate to boot with Secure Boot enabled.
-  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -q "Microsoft Option ROM UEFI CA 2023"; then
+  local CERT_ROM
+  CERT_ROM="unknown"
+  if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Microsoft Option ROM UEFI CA 2023"; then
+    CERT_ROM=true
+  elif [[ -n "$DB_OUTPUT" ]]; then
+    CERT_ROM=false
     echo -e "${YELLOW}WARNING: The Microsoft Option ROM UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
     echo -e "This certificate is required for hardware Option ROMs (GPU, NIC firmware, etc.) with Secure Boot."
     echo -e "Missing this certificate may cause hardware to not initialize with Secure Boot enabled."
@@ -657,7 +662,12 @@ _enable_secure_boot() {
 
     if gum confirm "Rebuild and enroll Secure Boot keys now?"; then
       echo -e "${BLUE}Applying system configuration to enroll keys...${NC}"
-      if ! sudo sbctl enroll-keys --microsoft --firmware-builtin; then
+      local SBCTL_ARGS="--microsoft"
+      if [[ "$CERT_ROM" == true ]]; then
+        SBCTL_ARGS="--microsoft --firmware-builtin"
+        echo -e "${BLUE}Firmware certificate will also be enrolled...${NC}"
+      fi
+      if ! sudo sbctl enroll-keys "${SBCTL_ARGS}"; then
         echo -e "${RED}Failed to enroll Secure Boot keys.${NC}"
         echo -e "${YELLOW}Please ensure you are in UEFI Setup Mode and try again.${NC}"
         return
