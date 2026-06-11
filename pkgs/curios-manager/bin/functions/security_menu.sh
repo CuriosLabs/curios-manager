@@ -69,6 +69,8 @@ security_menu() {
     "🔗 Enable Secure Boot (Limine)" \
     " View current PAM/U2F keys file" \
     "󰙨 Test PAM authentication" \
+    "🐚 Add SSH key to YubiKey (FIDO2)" \
+    "📋 List YubiKey SSH/passkeys (FIDO2)" \
     " Back")
 
   case $SECURITY_MENU in
@@ -96,6 +98,14 @@ security_menu() {
     ;;
   "󰙨 Test PAM authentication")
     _test_u2f_auth
+    security_menu
+    ;;
+  "🐚 Add SSH key to YubiKey (FIDO2)")
+    _generate_ssh_fido2_key
+    security_menu
+    ;;
+  "📋 List YubiKey SSH/passkeys (FIDO2)")
+    _list_yubikey_credentials
     security_menu
     ;;
   " Back")
@@ -219,7 +229,6 @@ _view_u2f_keys() {
     cat "$u2f_file"
     echo ""
     echo -e "${GREY}Location: $u2f_file${NC}"
-    echo -e "${GREY}Format: username:handle1,key1,...:handle2,key2,... (one logical line per user)${NC}"
   else
     echo -e "${YELLOW}No U2F keys file found for this user yet.${NC}"
     echo -e "Use the registration options above to create one."
@@ -243,6 +252,167 @@ _test_u2f_auth() {
 
   echo -e "${YELLOW}--- Testing 'sudo' PAM service ---${NC}"
   pamtester sudo "$USER" authenticate || true
+}
+
+#------------- SSH FIDO2 key generation functions
+
+_generate_ssh_fido2_key() {
+  echo -e "${BLUE}SSH FIDO2 Key Generation (ed25519-sk)${NC}"
+  echo ""
+
+  # Check if ykman is available
+  if ! available ykman; then
+    echo -e "${RED}ykman is not installed on this system.${NC}"
+    echo -e "This is required to detect the YubiKey."
+    return
+  fi
+
+  # Check if a YubiKey is inserted
+  echo -e "${BLUE}Checking for YubiKey...${NC}"
+  local YKMAN_LIST
+  YKMAN_LIST=$(ykman list 2>/dev/null || true)
+
+  if [[ -z "$YKMAN_LIST" ]]; then
+    echo -e "${YELLOW}No YubiKey detected.${NC}"
+    echo -e "Please insert your YubiKey and try again."
+    return
+  fi
+
+  echo -e "${GREEN}✓ YubiKey detected:${NC}"
+  echo "$YKMAN_LIST"
+  echo ""
+
+  # Check if a FIDO2 PIN is set on the YubiKey
+  local PIN_STATUS
+  PIN_STATUS=$(_check_yubikey_fido_pin)
+
+  case "$PIN_STATUS" in
+  "set")
+    echo -e "${GREEN}✓ FIDO PIN is set on the YubiKey.${NC}"
+    echo ""
+    ;;
+  "not_set")
+    echo -e "${YELLOW}This YubiKey does NOT have a FIDO PIN set yet.${NC}"
+    echo -e "A PIN is required to use the ${BLUE}-O verify-required${NC} option for SSH key generation."
+    echo ""
+    if gum confirm "Set a FIDO PIN on the YubiKey now?"; then
+      echo -e "${BLUE}Launching PIN setup...${NC}"
+      echo -e "${GREY}(You will be asked to set a new PIN for the FIDO application)${NC}"
+      echo ""
+      ykman fido access change-pin || true
+      echo ""
+      # Re-check after the user has (hopefully) set a PIN
+      PIN_STATUS=$(_check_yubikey_fido_pin)
+      if [[ "$PIN_STATUS" == "set" ]]; then
+        echo -e "${GREEN}✓ FIDO PIN successfully set.${NC}"
+        echo ""
+      else
+        echo -e "${YELLOW}Could not confirm that a PIN was set. You can try again later with:${NC}"
+        echo -e "    ykman fido access change-pin"
+        return
+      fi
+    else
+      echo -e "${YELLOW}A FIDO PIN is required for -O verify-required. Aborting.${NC}"
+      return
+    fi
+    ;;
+  "unknown")
+    echo -e "${YELLOW}Could not determine FIDO PIN status (ykman not available or not a Yubikey device).${NC}"
+    echo -e "A PIN is required to use the ${BLUE}-O verify-required${NC} option."
+    echo ""
+    echo -e "You can set a FIDO PIN with: ${BLUE}ykman fido access change-pin${NC}"
+    return
+    ;;
+  esac
+
+  # Ask user for the key name (comment)
+  local KEY_NAME
+  KEY_NAME=$(gum input --placeholder "my-key" --prompt "Enter a name for the SSH key (used as comment): ")
+
+  if [[ -z "$KEY_NAME" ]]; then
+    echo -e "${YELLOW}No key name provided. Aborting.${NC}"
+    return
+  fi
+
+  echo ""
+  echo -e "${BLUE}Generating SSH FIDO2 key...${NC}"
+  echo -e "  Type: ${GREEN}ed25519-sk${NC}"
+  echo -e "  Comment: ${GREEN}$KEY_NAME${NC}"
+  echo -e "  Application: ${GREEN}ssh:${KEY_NAME}${NC}"
+  echo -e "  Options: ${GREEN}-O verify-required -O resident${NC}"
+  echo ""
+  echo -e "${YELLOW}When prompted, enter your YubiKey PIN and touch the device when it blinks.${NC}"
+  echo ""
+
+  local SSH_DIR="$HOME/.ssh"
+  mkdir -p "$SSH_DIR"
+
+  local KEY_FILE="$SSH_DIR/id_ed25519_sk_${KEY_NAME}"
+
+  if [[ -f "$KEY_FILE" ]]; then
+    echo -e "${YELLOW}Warning:${NC} A key file already exists at $KEY_FILE"
+    if ! gum confirm "Overwrite existing key file?" --default=false; then
+      echo -e "${YELLOW}Key generation cancelled.${NC}"
+      return
+    fi
+  fi
+
+  if ssh-keygen -t ed25519-sk -O verify-required -O resident -O application="ssh:${KEY_NAME}" -C "$KEY_NAME" -f "$KEY_FILE"; then
+    echo ""
+    echo -e "${GREEN}✓ SSH FIDO2 key successfully generated!${NC}"
+    echo ""
+    echo -e "Key file: ${BLUE}$KEY_FILE${NC}"
+    echo -e "Public key: ${BLUE}${KEY_FILE}.pub${NC}"
+    echo ""
+    echo -e "${YELLOW}Notes:${NC}"
+    echo -e "  • The private key is stored on the YubiKey (resident key)."
+    echo -e "  • The local key file is a handle that references the YubiKey."
+    echo -e "  • You can use the key with: ${BLUE}ssh -i $KEY_FILE user@host${NC}"
+    echo -e "  • To use the key on another machine, you can download it with: ${BLUE}cd ~/.ssh/ && ssh-keygen -K${NC}"
+    echo ""
+  else
+    echo ""
+    echo -e "${RED}Key generation failed.${NC}"
+    echo -e "Make sure your YubiKey supports FIDO2 and try again."
+  fi
+}
+
+_list_yubikey_credentials() {
+  echo -e "${BLUE}List YubiKey SSH/passkeys (FIDO2 resident credentials)${NC}"
+  echo ""
+
+  # Check if ykman is available
+  if ! available ykman; then
+    echo -e "${RED}ykman is not installed on this system.${NC}"
+    echo -e "This is required to detect the YubiKey and list credentials."
+    return
+  fi
+
+  # Check if a YubiKey is inserted
+  echo -e "${BLUE}Checking for YubiKey...${NC}"
+  local YKMAN_LIST
+  YKMAN_LIST=$(ykman list 2>/dev/null || true)
+
+  if [[ -z "$YKMAN_LIST" ]]; then
+    echo -e "${YELLOW}No YubiKey detected.${NC}"
+    echo -e "Please insert your YubiKey and try again."
+    return
+  fi
+
+  echo -e "${GREEN}✓ YubiKey detected:${NC}"
+  echo "$YKMAN_LIST"
+  echo ""
+
+  echo -e "${BLUE}FIDO2 resident credentials on the YubiKey:${NC}"
+  echo ""
+  if ykman fido credentials list; then
+    echo ""
+    echo -e "${GREY}These credentials are stored on the YubiKey and can be used as SSH keys.${NC}"
+  else
+    echo ""
+    echo -e "${RED}Failed to list credentials.${NC}"
+    echo -e "Make sure your YubiKey supports FIDO2 and try again."
+  fi
 }
 
 #------------- LUKS FIDO2 enrollment functions
@@ -375,7 +545,7 @@ _enroll_luks_fido2() {
         return
       fi
     else
-      echo -e "${GREY}Skipping PIN setup. You can set it with: ykman or the Yubico authenticator app.${NC}"
+      echo -e "${GREY}Skipping PIN setup. You can set it with: ${BLUE}ykman fido access change-pin${NC} or the Yubico authenticator app.${NC}"
       return
     fi
     ;;
