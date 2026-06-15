@@ -752,7 +752,9 @@ _enable_secure_boot() {
   # If not present, a firmware update may be required.
   local KEK_OUTPUT
   KEK_OUTPUT=$(efi-readvar -v KEK 2>/dev/null || true)
-  if [[ -n "$KEK_OUTPUT" ]] && ! echo "$KEK_OUTPUT" | grep -q "Microsoft Corporation KEK 2K CA 2023"; then
+  if [[ -n "$KEK_OUTPUT" ]] && ! echo "$KEK_OUTPUT" | grep -q "Variable KEK has no entries"; then
+    echo -e "${YELLOW}WARNING:${NC} UEFI KEK database is empty."
+  elif [[ -n "$KEK_OUTPUT" ]] && ! echo "$KEK_OUTPUT" | grep -q "Microsoft Corporation KEK 2K CA 2023"; then
     echo -e "${YELLOW}WARNING: The Microsoft KEK 2023 certificate is not present in the UEFI KEK database.${NC}"
     echo -e "This certificate is required for Secure Boot with the --microsoft flag in sbctl."
     echo -e "A firmware update may be needed to add this certificate."
@@ -773,7 +775,9 @@ _enable_secure_boot() {
   # If not present, a firmware update may be required.
   local DB_OUTPUT
   DB_OUTPUT=$(efi-readvar -v db 2>/dev/null || true)
-  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -qE "Windows UEFI CA 2023|Microsoft UEFI CA 2023"; then
+  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
+    echo -e "${YELLOW}WARNING:${NC} UEFI db database is empty."
+  elif [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -qE "Windows UEFI CA 2023|Microsoft UEFI CA 2023"; then
     echo -e "${YELLOW}WARNING: The Windows UEFI CA 2023 / Microsoft UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
     echo -e "This certificate is required for Secure Boot with the --microsoft flag in sbctl."
     echo -e "A firmware update may be needed to add this certificate."
@@ -794,6 +798,9 @@ _enable_secure_boot() {
   # Some devices require this certificate to boot with Secure Boot enabled.
   local CERT_ROM
   CERT_ROM="unknown"
+  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
+    # We consider that `sbctl --firmware-builtin` will add it.
+    CERT_ROM=true
   if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Microsoft Option ROM UEFI CA 2023"; then
     CERT_ROM=true
   elif [[ -n "$DB_OUTPUT" ]]; then
@@ -893,7 +900,7 @@ _enable_secure_boot() {
   echo -e "  1. Rebooting the computer"
   echo -e "  2. In the Limine boot menu, press ${GREEN}S${NC} to enter ${BLUE}Firmware Setup${NC}"
   echo -e "  3. In the UEFI firmware, find the Secure Boot settings"
-  echo -e "  4. Select ${BLUE}Reset to Setup Mode${NC} or clear all keys"
+  echo -e "  4. Select ${BLUE}Reset to Setup Mode${NC} ${YELLOW}OR${NC} clear all keys"
   echo -e "  5. Save and exit, rebooting back to CuriOS"
   echo ""
   echo -e "${YELLOW}Important:${NC} Do not select 'Clear All Secure Boot Keys' on ThinkPad devices."
