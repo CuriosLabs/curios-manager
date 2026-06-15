@@ -752,7 +752,7 @@ _enable_secure_boot() {
   # If not present, a firmware update may be required.
   local KEK_OUTPUT
   KEK_OUTPUT=$(efi-readvar -v KEK 2>/dev/null || true)
-  if [[ -n "$KEK_OUTPUT" ]] && ! echo "$KEK_OUTPUT" | grep -q "Variable KEK has no entries"; then
+  if [[ -n "$KEK_OUTPUT" ]] && echo "$KEK_OUTPUT" | grep -q "Variable KEK has no entries"; then
     echo -e "${YELLOW}WARNING:${NC} UEFI KEK database is empty."
   elif [[ -n "$KEK_OUTPUT" ]] && ! echo "$KEK_OUTPUT" | grep -q "Microsoft Corporation KEK 2K CA 2023"; then
     echo -e "${YELLOW}WARNING: The Microsoft KEK 2023 certificate is not present in the UEFI KEK database.${NC}"
@@ -775,7 +775,7 @@ _enable_secure_boot() {
   # If not present, a firmware update may be required.
   local DB_OUTPUT
   DB_OUTPUT=$(efi-readvar -v db 2>/dev/null || true)
-  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
+  if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
     echo -e "${YELLOW}WARNING:${NC} UEFI db database is empty."
   elif [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -qE "Windows UEFI CA 2023|Microsoft UEFI CA 2023"; then
     echo -e "${YELLOW}WARNING: The Windows UEFI CA 2023 / Microsoft UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
@@ -798,10 +798,10 @@ _enable_secure_boot() {
   # Some devices require this certificate to boot with Secure Boot enabled.
   local CERT_ROM
   CERT_ROM="unknown"
-  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
+  if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
     # We consider that `sbctl --firmware-builtin` will add it.
     CERT_ROM=true
-  if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Microsoft Option ROM UEFI CA 2023"; then
+  elif [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Microsoft Option ROM UEFI CA 2023"; then
     CERT_ROM=true
   elif [[ -n "$DB_OUTPUT" ]]; then
     CERT_ROM=false
