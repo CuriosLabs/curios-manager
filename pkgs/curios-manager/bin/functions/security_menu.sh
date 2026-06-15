@@ -800,7 +800,7 @@ _enable_secure_boot() {
   CERT_ROM="unknown"
   if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
     # We consider that `sbctl --firmware-builtin` will add it.
-    CERT_ROM=true
+    CERT_ROM=false
   elif [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Microsoft Option ROM UEFI CA 2023"; then
     CERT_ROM=true
   elif [[ -n "$DB_OUTPUT" ]]; then
@@ -845,9 +845,9 @@ _enable_secure_boot() {
 
     if gum confirm "Rebuild and enroll Secure Boot keys now?"; then
       echo -e "${BLUE}Applying system configuration to enroll keys...${NC}"
-      local SBCTL_ARGS="--microsoft"
+      local SBCTL_ARGS="-m"
       if [[ "$CERT_ROM" == true ]]; then
-        SBCTL_ARGS="--microsoft --firmware-builtin"
+        SBCTL_ARGS="-m -f"
         echo -e "${BLUE}Firmware certificate will also be enrolled...${NC}"
       fi
       if ! sudo sbctl enroll-keys "${SBCTL_ARGS}"; then
@@ -858,12 +858,13 @@ _enable_secure_boot() {
       echo -e "${GREEN}✓ Secure Boot keys enrolled successfully.${NC}"
       echo ""
       sudo whoami 1>/dev/null
-      # NOTE: not sure if it is needed - `sbctl enroll-keys --microsoft` might download certificates needed for --firmware-builtin
-      if [[ "$CERT_ROM" == true ]]; then
-        gum spin --spinner dot --title "Enabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware true
-      else
-        gum spin --spinner dot --title "Disabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware false
-      fi
+      # NOTE: not sure if it is needed - `sbctl enroll-keys -m` might download certificates needed for --firmware-builtin
+      #
+      #if [[ "$CERT_ROM" == true ]]; then
+      #  gum spin --spinner dot --title "Enabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware true
+      #else
+      #  gum spin --spinner dot --title "Disabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware false
+      #fi
       gum spin --spinner dot --title "Enabling secure boot module..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.enable true
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
       echo ""
