@@ -62,11 +62,11 @@ security_menu() {
   fi
 
   local SECURITY_MENU
-  SECURITY_MENU=$(gum choose --header "YubiKey Security - Select an option:" \
-    "🔑 Register primary YubiKey for user login/sudo (PAM)" \
-    "󰐕 Add additional YubiKey for user login/sudo (PAM)" \
+  SECURITY_MENU=$(gum choose --header "Security - Select an option:" \
     "🔐 Enroll YubiKey for full disk decryption (FIDO2)" \
     "🔗 Enable Secure Boot (Limine)" \
+    "🔑 Register primary YubiKey for user login/sudo (PAM)" \
+    "󰐕 Add additional YubiKey for user login/sudo (PAM)" \
     " View current PAM/U2F keys file" \
     "󰙨 Test PAM authentication" \
     "🐚 Add SSH key to YubiKey (FIDO2)" \
@@ -318,7 +318,7 @@ _generate_ssh_fido2_key() {
     ;;
   "unknown")
     echo -e "${YELLOW}Could not determine FIDO PIN status (ykman not available or not a Yubikey device).${NC}"
-    echo -e "A PIN is required to use the ${BLUE}-O verify-required${NC} option."
+    echo -e "A PIN is required to use this option."
     echo ""
     echo -e "You can set a FIDO PIN with: ${BLUE}ykman fido access change-pin${NC}"
     return
@@ -339,7 +339,6 @@ _generate_ssh_fido2_key() {
   echo -e "  Type: ${GREEN}ed25519-sk${NC}"
   echo -e "  Comment: ${GREEN}$KEY_NAME${NC}"
   echo -e "  Application: ${GREEN}ssh:${KEY_NAME}${NC}"
-  echo -e "  Options: ${GREEN}-O verify-required -O resident${NC}"
   echo ""
   echo -e "${YELLOW}When prompted, enter your YubiKey PIN and touch the device when it blinks.${NC}"
   echo ""
@@ -408,6 +407,7 @@ _list_yubikey_credentials() {
   if ykman fido credentials list; then
     echo ""
     echo -e "${GREY}These credentials are stored on the YubiKey and can be used as SSH keys.${NC}"
+    echo -e "You can download them with: ${BLUE}cd ~/.ssh/ && ssh-keygen -K${NC}"
   else
     echo ""
     echo -e "${RED}Failed to list credentials.${NC}"
@@ -527,7 +527,7 @@ _enroll_luks_fido2() {
     ;;
   "not_set")
     echo -e "${YELLOW}This YubiKey does NOT have a FIDO PIN set yet.${NC}"
-    echo -e "A PIN is required if you want to use ${BLUE}--fido2-with-client-pin${NC} during enrollment."
+    echo -e "A PIN is required if you want to use it during enrollment."
     echo ""
     if gum confirm "Set a FIDO PIN on the YubiKey now?"; then
       echo -e "${BLUE}Launching PIN setup...${NC}"
@@ -709,7 +709,6 @@ _enable_secure_boot() {
   if [[ "$LIMINE_ENABLED" != "true" ]]; then
     echo -e "${YELLOW}Limine bootloader is currently NOT enabled on this system.${NC}"
     echo -e "Secure Boot with CuriOS requires the Limine bootloader."
-    echo -e "Limine will be the default bootloader in the next CuriOS version."
     echo ""
 
     if gum confirm "Switch to Limine bootloader now?"; then
