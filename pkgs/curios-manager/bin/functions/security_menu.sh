@@ -63,14 +63,14 @@ security_menu() {
 
   local SECURITY_MENU
   SECURITY_MENU=$(gum choose --header "Security - Select an option:" \
-    "🔐 Enroll YubiKey for full disk decryption (FIDO2)" \
-    "🔗 Enable Secure Boot (Limine)" \
+    "🔐 Enroll YubiKey for full disk decryption" \
+    "🔗 Enable Secure Boot" \
     "🔑 Register primary YubiKey for user login/sudo (PAM)" \
     "󰐕 Add additional YubiKey for user login/sudo (PAM)" \
     " View current PAM/U2F keys file" \
     "󰙨 Test PAM authentication" \
-    "🐚 Add SSH key to YubiKey (FIDO2)" \
-    "📋 List YubiKey SSH/passkeys (FIDO2)" \
+    "🐚 Add SSH key to YubiKey" \
+    "📋 List YubiKey SSH/passkeys" \
     " Back")
 
   case $SECURITY_MENU in
@@ -84,11 +84,11 @@ security_menu() {
     _register_u2f_key "additional"
     security_menu
     ;;
-  "🔐 Enroll YubiKey for full disk decryption (FIDO2)")
+  "🔐 Enroll YubiKey for full disk decryption")
     _enroll_luks_fido2
     security_menu
     ;;
-  "🔗 Enable Secure Boot (Limine)")
+  "🔗 Enable Secure Boot")
     _enable_secure_boot
     security_menu
     ;;
@@ -100,11 +100,11 @@ security_menu() {
     _test_u2f_auth
     security_menu
     ;;
-  "🐚 Add SSH key to YubiKey (FIDO2)")
+  "🐚 Add SSH key to YubiKey")
     _generate_ssh_fido2_key
     security_menu
     ;;
-  "📋 List YubiKey SSH/passkeys (FIDO2)")
+  "📋 List YubiKey SSH/passkeys")
     _list_yubikey_credentials
     security_menu
     ;;
