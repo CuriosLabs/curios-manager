@@ -62,13 +62,15 @@ security_menu() {
   fi
 
   local SECURITY_MENU
-  SECURITY_MENU=$(gum choose --header "YubiKey Security - Select an option:" \
+  SECURITY_MENU=$(gum choose --header "Security - Select an option:" \
+    "🔐 Enroll YubiKey for full disk decryption" \
+    "🔗 Enable Secure Boot" \
     "🔑 Register primary YubiKey for user login/sudo (PAM)" \
     "󰐕 Add additional YubiKey for user login/sudo (PAM)" \
-    "🔐 Enroll YubiKey for full disk decryption (FIDO2)" \
-    "🔗 Enable Secure Boot (Limine)" \
     " View current PAM/U2F keys file" \
     "󰙨 Test PAM authentication" \
+    "🐚 Add SSH key to YubiKey" \
+    "📋 List YubiKey SSH/passkeys" \
     " Back")
 
   case $SECURITY_MENU in
@@ -82,11 +84,11 @@ security_menu() {
     _register_u2f_key "additional"
     security_menu
     ;;
-  "🔐 Enroll YubiKey for full disk decryption (FIDO2)")
+  "🔐 Enroll YubiKey for full disk decryption")
     _enroll_luks_fido2
     security_menu
     ;;
-  "🔗 Enable Secure Boot (Limine)")
+  "🔗 Enable Secure Boot")
     _enable_secure_boot
     security_menu
     ;;
@@ -96,6 +98,14 @@ security_menu() {
     ;;
   "󰙨 Test PAM authentication")
     _test_u2f_auth
+    security_menu
+    ;;
+  "🐚 Add SSH key to YubiKey")
+    _generate_ssh_fido2_key
+    security_menu
+    ;;
+  "📋 List YubiKey SSH/passkeys")
+    _list_yubikey_credentials
     security_menu
     ;;
   " Back")
@@ -219,7 +229,6 @@ _view_u2f_keys() {
     cat "$u2f_file"
     echo ""
     echo -e "${GREY}Location: $u2f_file${NC}"
-    echo -e "${GREY}Format: username:handle1,key1,...:handle2,key2,... (one logical line per user)${NC}"
   else
     echo -e "${YELLOW}No U2F keys file found for this user yet.${NC}"
     echo -e "Use the registration options above to create one."
@@ -243,6 +252,167 @@ _test_u2f_auth() {
 
   echo -e "${YELLOW}--- Testing 'sudo' PAM service ---${NC}"
   pamtester sudo "$USER" authenticate || true
+}
+
+#------------- SSH FIDO2 key generation functions
+
+_generate_ssh_fido2_key() {
+  echo -e "${BLUE}SSH FIDO2 Key Generation (ed25519-sk)${NC}"
+  echo ""
+
+  # Check if ykman is available
+  if ! available ykman; then
+    echo -e "${RED}ykman is not installed on this system.${NC}"
+    echo -e "This is required to detect the YubiKey."
+    return
+  fi
+
+  # Check if a YubiKey is inserted
+  echo -e "${BLUE}Checking for YubiKey...${NC}"
+  local YKMAN_LIST
+  YKMAN_LIST=$(ykman list 2>/dev/null || true)
+
+  if [[ -z "$YKMAN_LIST" ]]; then
+    echo -e "${YELLOW}No YubiKey detected.${NC}"
+    echo -e "Please insert your YubiKey and try again."
+    return
+  fi
+
+  echo -e "${GREEN}✓ YubiKey detected:${NC}"
+  echo "$YKMAN_LIST"
+  echo ""
+
+  # Check if a FIDO2 PIN is set on the YubiKey
+  local PIN_STATUS
+  PIN_STATUS=$(_check_yubikey_fido_pin)
+
+  case "$PIN_STATUS" in
+  "set")
+    echo -e "${GREEN}✓ FIDO PIN is set on the YubiKey.${NC}"
+    echo ""
+    ;;
+  "not_set")
+    echo -e "${YELLOW}This YubiKey does NOT have a FIDO PIN set yet.${NC}"
+    echo -e "A PIN is required to use the ${BLUE}-O verify-required${NC} option for SSH key generation."
+    echo ""
+    if gum confirm "Set a FIDO PIN on the YubiKey now?"; then
+      echo -e "${BLUE}Launching PIN setup...${NC}"
+      echo -e "${GREY}(You will be asked to set a new PIN for the FIDO application)${NC}"
+      echo ""
+      ykman fido access change-pin || true
+      echo ""
+      # Re-check after the user has (hopefully) set a PIN
+      PIN_STATUS=$(_check_yubikey_fido_pin)
+      if [[ "$PIN_STATUS" == "set" ]]; then
+        echo -e "${GREEN}✓ FIDO PIN successfully set.${NC}"
+        echo ""
+      else
+        echo -e "${YELLOW}Could not confirm that a PIN was set. You can try again later with:${NC}"
+        echo -e "    ykman fido access change-pin"
+        return
+      fi
+    else
+      echo -e "${YELLOW}A FIDO PIN is required for -O verify-required. Aborting.${NC}"
+      return
+    fi
+    ;;
+  "unknown")
+    echo -e "${YELLOW}Could not determine FIDO PIN status (ykman not available or not a Yubikey device).${NC}"
+    echo -e "A PIN is required to use this option."
+    echo ""
+    echo -e "You can set a FIDO PIN with: ${BLUE}ykman fido access change-pin${NC}"
+    return
+    ;;
+  esac
+
+  # Ask user for the key name (comment)
+  local KEY_NAME
+  KEY_NAME=$(gum input --placeholder "my-key" --prompt "Enter a name for the SSH key (used as comment): ")
+
+  if [[ -z "$KEY_NAME" ]]; then
+    echo -e "${YELLOW}No key name provided. Aborting.${NC}"
+    return
+  fi
+
+  echo ""
+  echo -e "${BLUE}Generating SSH FIDO2 key...${NC}"
+  echo -e "  Type: ${GREEN}ed25519-sk${NC}"
+  echo -e "  Comment: ${GREEN}$KEY_NAME${NC}"
+  echo -e "  Application: ${GREEN}ssh:${KEY_NAME}${NC}"
+  echo ""
+  echo -e "${YELLOW}When prompted, enter your YubiKey PIN and touch the device when it blinks.${NC}"
+  echo ""
+
+  local SSH_DIR="$HOME/.ssh"
+  mkdir -p "$SSH_DIR"
+
+  local KEY_FILE="$SSH_DIR/id_ed25519_sk_${KEY_NAME}"
+
+  if [[ -f "$KEY_FILE" ]]; then
+    echo -e "${YELLOW}Warning:${NC} A key file already exists at $KEY_FILE"
+    if ! gum confirm "Overwrite existing key file?" --default=false; then
+      echo -e "${YELLOW}Key generation cancelled.${NC}"
+      return
+    fi
+  fi
+
+  if ssh-keygen -t ed25519-sk -O verify-required -O resident -O application="ssh:${KEY_NAME}" -C "$KEY_NAME" -f "$KEY_FILE"; then
+    echo ""
+    echo -e "${GREEN}✓ SSH FIDO2 key successfully generated!${NC}"
+    echo ""
+    echo -e "Key file: ${BLUE}$KEY_FILE${NC}"
+    echo -e "Public key: ${BLUE}${KEY_FILE}.pub${NC}"
+    echo ""
+    echo -e "${YELLOW}Notes:${NC}"
+    echo -e "  • The private key is stored on the YubiKey (resident key)."
+    echo -e "  • The local key file is a handle that references the YubiKey."
+    echo -e "  • You can use the key with: ${BLUE}ssh -i $KEY_FILE user@host${NC}"
+    echo -e "  • To use the key on another machine, you can download it with: ${BLUE}cd ~/.ssh/ && ssh-keygen -K${NC}"
+    echo ""
+  else
+    echo ""
+    echo -e "${RED}Key generation failed.${NC}"
+    echo -e "Make sure your YubiKey supports FIDO2 and try again."
+  fi
+}
+
+_list_yubikey_credentials() {
+  echo -e "${BLUE}List YubiKey SSH/passkeys (FIDO2 resident credentials)${NC}"
+  echo ""
+
+  # Check if ykman is available
+  if ! available ykman; then
+    echo -e "${RED}ykman is not installed on this system.${NC}"
+    echo -e "This is required to detect the YubiKey and list credentials."
+    return
+  fi
+
+  # Check if a YubiKey is inserted
+  echo -e "${BLUE}Checking for YubiKey...${NC}"
+  local YKMAN_LIST
+  YKMAN_LIST=$(ykman list 2>/dev/null || true)
+
+  if [[ -z "$YKMAN_LIST" ]]; then
+    echo -e "${YELLOW}No YubiKey detected.${NC}"
+    echo -e "Please insert your YubiKey and try again."
+    return
+  fi
+
+  echo -e "${GREEN}✓ YubiKey detected:${NC}"
+  echo "$YKMAN_LIST"
+  echo ""
+
+  echo -e "${BLUE}FIDO2 resident credentials on the YubiKey:${NC}"
+  echo ""
+  if ykman fido credentials list; then
+    echo ""
+    echo -e "${GREY}These credentials are stored on the YubiKey and can be used as SSH keys.${NC}"
+    echo -e "You can download them with: ${BLUE}cd ~/.ssh/ && ssh-keygen -K${NC}"
+  else
+    echo ""
+    echo -e "${RED}Failed to list credentials.${NC}"
+    echo -e "Make sure your YubiKey supports FIDO2 and try again."
+  fi
 }
 
 #------------- LUKS FIDO2 enrollment functions
@@ -357,7 +527,7 @@ _enroll_luks_fido2() {
     ;;
   "not_set")
     echo -e "${YELLOW}This YubiKey does NOT have a FIDO PIN set yet.${NC}"
-    echo -e "A PIN is required if you want to use ${BLUE}--fido2-with-client-pin${NC} during enrollment."
+    echo -e "A PIN is required if you want to use it during enrollment."
     echo ""
     if gum confirm "Set a FIDO PIN on the YubiKey now?"; then
       echo -e "${BLUE}Launching PIN setup...${NC}"
@@ -375,7 +545,7 @@ _enroll_luks_fido2() {
         return
       fi
     else
-      echo -e "${GREY}Skipping PIN setup. You can set it with: ykman or the Yubico authenticator app.${NC}"
+      echo -e "${GREY}Skipping PIN setup. You can set it with: ${BLUE}ykman fido access change-pin${NC} or the Yubico authenticator app.${NC}"
       return
     fi
     ;;
@@ -539,7 +709,6 @@ _enable_secure_boot() {
   if [[ "$LIMINE_ENABLED" != "true" ]]; then
     echo -e "${YELLOW}Limine bootloader is currently NOT enabled on this system.${NC}"
     echo -e "Secure Boot with CuriOS requires the Limine bootloader."
-    echo -e "Limine will be the default bootloader in the next CuriOS version."
     echo ""
 
     if gum confirm "Switch to Limine bootloader now?"; then
@@ -582,7 +751,9 @@ _enable_secure_boot() {
   # If not present, a firmware update may be required.
   local KEK_OUTPUT
   KEK_OUTPUT=$(efi-readvar -v KEK 2>/dev/null || true)
-  if [[ -n "$KEK_OUTPUT" ]] && ! echo "$KEK_OUTPUT" | grep -q "Microsoft Corporation KEK 2K CA 2023"; then
+  if [[ -n "$KEK_OUTPUT" ]] && echo "$KEK_OUTPUT" | grep -q "Variable KEK has no entries"; then
+    echo -e "${YELLOW}WARNING:${NC} UEFI KEK database is empty."
+  elif [[ -n "$KEK_OUTPUT" ]] && ! echo "$KEK_OUTPUT" | grep -q "Microsoft Corporation KEK 2K CA 2023"; then
     echo -e "${YELLOW}WARNING: The Microsoft KEK 2023 certificate is not present in the UEFI KEK database.${NC}"
     echo -e "This certificate is required for Secure Boot with the --microsoft flag in sbctl."
     echo -e "A firmware update may be needed to add this certificate."
@@ -603,7 +774,9 @@ _enable_secure_boot() {
   # If not present, a firmware update may be required.
   local DB_OUTPUT
   DB_OUTPUT=$(efi-readvar -v db 2>/dev/null || true)
-  if [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -qE "Windows UEFI CA 2023|Microsoft UEFI CA 2023"; then
+  if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
+    echo -e "${YELLOW}WARNING:${NC} UEFI db database is empty."
+  elif [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -qE "Windows UEFI CA 2023|Microsoft UEFI CA 2023"; then
     echo -e "${YELLOW}WARNING: The Windows UEFI CA 2023 / Microsoft UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
     echo -e "This certificate is required for Secure Boot with the --microsoft flag in sbctl."
     echo -e "A firmware update may be needed to add this certificate."
@@ -624,7 +797,10 @@ _enable_secure_boot() {
   # Some devices require this certificate to boot with Secure Boot enabled.
   local CERT_ROM
   CERT_ROM="unknown"
-  if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Microsoft Option ROM UEFI CA 2023"; then
+  if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
+    # We consider that `sbctl --firmware-builtin` will add it.
+    CERT_ROM=false
+  elif [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Microsoft Option ROM UEFI CA 2023"; then
     CERT_ROM=true
   elif [[ -n "$DB_OUTPUT" ]]; then
     CERT_ROM=false
@@ -668,9 +844,9 @@ _enable_secure_boot() {
 
     if gum confirm "Rebuild and enroll Secure Boot keys now?"; then
       echo -e "${BLUE}Applying system configuration to enroll keys...${NC}"
-      local SBCTL_ARGS="--microsoft"
+      local SBCTL_ARGS="-m"
       if [[ "$CERT_ROM" == true ]]; then
-        SBCTL_ARGS="--microsoft --firmware-builtin"
+        SBCTL_ARGS="-m -f"
         echo -e "${BLUE}Firmware certificate will also be enrolled...${NC}"
       fi
       if ! sudo sbctl enroll-keys "${SBCTL_ARGS}"; then
@@ -681,12 +857,13 @@ _enable_secure_boot() {
       echo -e "${GREEN}✓ Secure Boot keys enrolled successfully.${NC}"
       echo ""
       sudo whoami 1>/dev/null
-      # NOTE: not sure if it is needed - `sbctl enroll-keys --microsoft` might download certificates needed for --firmware-builtin
-      if [[ "$CERT_ROM" == true ]]; then
-        gum spin --spinner dot --title "Enabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware true
-      else
-        gum spin --spinner dot --title "Disabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware false
-      fi
+      # NOTE: not sure if it is needed - `sbctl enroll-keys -m` might download certificates needed for --firmware-builtin
+      #
+      #if [[ "$CERT_ROM" == true ]]; then
+      #  gum spin --spinner dot --title "Enabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware true
+      #else
+      #  gum spin --spinner dot --title "Disabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware false
+      #fi
       gum spin --spinner dot --title "Enabling secure boot module..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.enable true
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
       echo ""
@@ -723,7 +900,7 @@ _enable_secure_boot() {
   echo -e "  1. Rebooting the computer"
   echo -e "  2. In the Limine boot menu, press ${GREEN}S${NC} to enter ${BLUE}Firmware Setup${NC}"
   echo -e "  3. In the UEFI firmware, find the Secure Boot settings"
-  echo -e "  4. Select ${BLUE}Reset to Setup Mode${NC} or clear all keys"
+  echo -e "  4. Select ${BLUE}Reset to Setup Mode${NC} ${YELLOW}OR${NC} clear all keys"
   echo -e "  5. Save and exit, rebooting back to CuriOS"
   echo ""
   echo -e "${YELLOW}Important:${NC} Do not select 'Clear All Secure Boot Keys' on ThinkPad devices."
