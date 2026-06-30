@@ -36,7 +36,7 @@ main_menu() {
       exit 1
     fi
     sudo whoami 1>/dev/null # Force prompt for sudo password now
-    gum spin --spinner dot --title "Upgrading packages..." --show-error -- sudo nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+    gum spin --spinner dot --title "Upgrading packages..." --show-error -- sudo nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace
     status=$?
     if [ $status -ne 0 ]; then
       echo -e "${RED}Nix packages upgrade failed!${NC}"

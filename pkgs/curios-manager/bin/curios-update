@@ -249,7 +249,7 @@ update_curios() {
   echo -e "${GREEN}Launching Nix garbage collection...${NC}"
   nix-collect-garbage --delete-older-than 7d >/dev/null
   echo -e "${GREEN}Updating CuriOS system...${NC}"
-  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto >/dev/null
+  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace >/dev/null
   echo -e "${GREEN}Updating Nix flakes...${NC}"
   nix profile upgrade --all >/dev/null
   reboot_check
@@ -419,7 +419,7 @@ upgrade_curios() {
   # Updating $CURIOS_MODULES_FILE
   export_curios_modules
   # Updating whole system
-  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto
+  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace
   echo -e "${GREEN}Done.${NC}"
 }
 
