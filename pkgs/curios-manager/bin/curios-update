@@ -336,12 +336,27 @@ add_package_to_settings() {
   fi
 }
 
+# Convert dotted key path to jq bracket path (handles keys with '-')
+# e.g. curios.hardened.apparmor-profiles.mode -> .["curios"]["hardened"]["apparmor-profiles"]["mode"]
+to_jq_path() {
+  local key="$1"
+  local jq_path=""
+  local part
+  IFS='.' read -ra parts <<< "$key"
+  for part in "${parts[@]}"; do
+    jq_path+="[\"${part}\"]"
+  done
+  echo ".${jq_path}"
+}
+
 # Update a value into the JSON file $CURIOS_MODULES_FILE
 update_curios_modules() {
   local key="$1"
   local value="$2"
   local tmp_json
+  local jq_path
   tmp_json=$(mktemp /tmp/curios-modules-XXXXXX.json)
+  jq_path=$(to_jq_path "$key")
 
   if [ ! -f "$CURIOS_MODULES_FILE" ]; then
     echo -e "${RED}Error: $CURIOS_MODULES_FILE not found.${NC}"
@@ -349,16 +364,16 @@ update_curios_modules() {
   fi
 
   # Check if key exists
-  if [[ $(jq -r ".$key" "$CURIOS_MODULES_FILE" 2>/dev/null) == "null" ]]; then
+  if [[ $(jq -r "$jq_path" "$CURIOS_MODULES_FILE" 2>/dev/null) == "null" ]]; then
     echo -e "${RED}Error: Key '$key' not found in $CURIOS_MODULES_FILE${NC}"
     exit 1
   fi
 
   # Handle boolean vs string
   if [[ "$value" == "true" || "$value" == "false" ]]; then
-    jq ".$key = $value" "$CURIOS_MODULES_FILE" >"$tmp_json"
+    jq "$jq_path = $value" "$CURIOS_MODULES_FILE" >"$tmp_json"
   else
-    jq --arg val "$value" ".$key = \$val" "$CURIOS_MODULES_FILE" >"$tmp_json"
+    jq --arg val "$value" "$jq_path = \$val" "$CURIOS_MODULES_FILE" >"$tmp_json"
   fi
 
   mv "$tmp_json" "$CURIOS_MODULES_FILE"
