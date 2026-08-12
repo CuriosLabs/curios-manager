@@ -342,7 +342,7 @@ to_jq_path() {
   local key="$1"
   local jq_path=""
   local part
-  IFS='.' read -ra parts <<< "$key"
+  IFS='.' read -ra parts <<<"$key"
   for part in "${parts[@]}"; do
     jq_path+="[\"${part}\"]"
   done
@@ -435,6 +435,15 @@ upgrade_curios() {
   export_curios_modules
   # Updating whole system
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace
+  # Clear AppArmor cache if any.
+  if command -v aa-status >/dev/null; then
+    if systemctl is-active --quiet apparmor.service; then
+      printf "\e[32m Clearing AppArmor cache...\e[0m\n"
+      fd -d 1 . /var/cache/apparmor/ -E logprof -x rm -rf {}
+      truncate -s 0 /var/log/audit/audit.log
+      systemctl restart apparmor
+    fi
+  fi
   echo -e "${GREEN}Done.${NC}"
 }
 
