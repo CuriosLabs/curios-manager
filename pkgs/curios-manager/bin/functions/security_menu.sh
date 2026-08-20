@@ -71,6 +71,7 @@ security_menu() {
     "󰙨 Test PAM authentication" \
     "🐚 Add SSH key to YubiKey" \
     "📋 List YubiKey SSH/passkeys" \
+    "🛡️ Enable AppArmor" \
     " Back")
 
   case $SECURITY_MENU in
@@ -106,6 +107,10 @@ security_menu() {
     ;;
   "📋 List YubiKey SSH/passkeys")
     _list_yubikey_credentials
+    security_menu
+    ;;
+  "🛡️ Enable AppArmor")
+    _enable_apparmor
     security_menu
     ;;
   " Back")
@@ -913,5 +918,79 @@ _enable_secure_boot() {
     systemctl reboot
   else
     echo -e "${YELLOW}You can reboot later. Remember to run this menu again after entering Setup Mode.${NC}"
+  fi
+}
+
+#------------- AppArmor functions
+
+_get_anssi_reinforced_enabled() {
+  curios-update --nixos-option curios.hardened.anssi.reinforced.enable 2>/dev/null |
+    sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "unknown"
+}
+
+_get_anssi_rule45_enabled() {
+  curios-update --nixos-option curios.hardened.anssi.reinforced.rule45 2>/dev/null |
+    sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "unknown"
+}
+
+_get_hardened_apparmor_profiles_enabled() {
+  curios-update --nixos-option curios.hardened.apparmor-profiles.enable 2>/dev/null |
+    sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "unknown"
+}
+
+_enable_apparmor() {
+  echo -e "${BLUE}AppArmor security module (Mandatory Access Control)${NC}"
+  echo ""
+
+  local ANSSI_REINFORCED_ENABLED
+  ANSSI_REINFORCED_ENABLED=$(_get_anssi_reinforced_enabled)
+  local ANSSI_RULE45_ENABLED
+  ANSSI_RULE45_ENABLED=$(_get_anssi_rule45_enabled)
+  local APPARMOR_PROFILES_ENABLED
+  APPARMOR_PROFILES_ENABLED=$(_get_hardened_apparmor_profiles_enabled)
+
+  if ! available aa-status || [[ "$ANSSI_REINFORCED_ENABLED" != "true" ]] || [[ "$ANSSI_RULE45_ENABLED" != "true" ]] || [[ "$APPARMOR_PROFILES_ENABLED" != "true" ]]; then
+    echo -e "${YELLOW}AppArmor is currently DISABLED or incomplete on this system.${NC}"
+    echo -e "Mandatory Access Control will not be applied until enabled."
+    echo ""
+
+    if gum confirm "Enable AppArmor now?"; then
+      echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
+      gum spin --spinner dot --title "Enabling hardened reinforced rules..." --show-error -- sudo curios-update --update-module curios.hardened.anssi.reinforced.enable true
+      gum spin --spinner dot --title "Enabling hardened AppArmor rule..." --show-error -- sudo curios-update --update-module curios.hardened.anssi.reinforced.rule45 true
+      gum spin --spinner dot --title "Enabling CuriOS AppArmor profiles..." --show-error -- sudo curios-update --update-module curios.hardened.apparmor-profiles.enable true
+      echo ""
+      echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
+      echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
+      gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
+    else
+      return
+    fi
+  fi
+
+  if aa-status --enabled; then
+    echo -e "${GREEN}✓ AppArmor is enabled!${NC}"
+    local ENFORCE_COUNT
+    ENFORCE_COUNT=$(sudo aa-status --count --show=profiles --filter.mode=enforce 2>/dev/null | tail -n1 | tr -d '[:space:]')
+    ENFORCE_COUNT=${ENFORCE_COUNT:-0}
+    if [[ "$ENFORCE_COUNT" -eq 0 ]]; then
+      echo -e "${YELLOW}⚠ No profiles in enforce mode. No AppArmor rules will actually be applied.${NC}"
+    else
+      echo -e "${GREEN}✓ ${ENFORCE_COUNT} profiles in enforce mode${NC}"
+    fi
+    echo ""
+    local COMPLAIN_COUNT
+    COMPLAIN_COUNT=$(sudo aa-status --count --show=profiles --filter.mode=complain 2>/dev/null | tail -n1 | tr -d '[:space:]')
+    COMPLAIN_COUNT=${COMPLAIN_COUNT:-0}
+    if [[ "$COMPLAIN_COUNT" -gt 0 ]]; then
+      echo -e "${YELLOW}⚠ Profiles in complain mode. Actions will only be logged NOT enforced!${NC}"
+    fi
+    sudo aa-status --show=profiles
+  else
+    echo -e "${RED}AppArmor installation went wrong!${NC}"
+    echo -e "Check documentation on: https://github.com/CuriosLabs/CuriOS/blob/master/docs/security.md"
+    echo ""
   fi
 }
