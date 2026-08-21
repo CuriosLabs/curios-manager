@@ -940,7 +940,6 @@ _get_hardened_apparmor_profiles_enabled() {
 
 _enable_apparmor() {
   echo -e "${BLUE}AppArmor security module (Mandatory Access Control)${NC}"
-  echo ""
 
   local ANSSI_REINFORCED_ENABLED
   ANSSI_REINFORCED_ENABLED=$(_get_anssi_reinforced_enabled)
@@ -980,14 +979,15 @@ _enable_apparmor() {
     else
       echo -e "${GREEN}✓ ${ENFORCE_COUNT} profiles in enforce mode${NC}"
     fi
-    echo ""
     local COMPLAIN_COUNT
     COMPLAIN_COUNT=$(sudo aa-status --count --show=profiles --filter.mode=complain 2>/dev/null | tail -n1 | tr -d '[:space:]')
     COMPLAIN_COUNT=${COMPLAIN_COUNT:-0}
     if [[ "$COMPLAIN_COUNT" -gt 0 ]]; then
-      echo -e "${YELLOW}⚠ Profiles in complain mode. Actions will only be logged NOT enforced!${NC}"
+      echo -e "${YELLOW}⚠ ${COMPLAIN_COUNT} profiles in complain mode. Actions will only be logged NOT enforced!${NC}"
     fi
+    echo ""
     sudo aa-status --show=profiles
+    echo ""
   else
     echo -e "${RED}AppArmor installation went wrong!${NC}"
     echo -e "Check documentation on: https://github.com/CuriosLabs/CuriOS/blob/master/docs/security.md"
