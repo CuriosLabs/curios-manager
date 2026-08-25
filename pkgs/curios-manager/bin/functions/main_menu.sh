@@ -48,6 +48,13 @@ main_menu() {
       echo -e "${RED}Nix flakes upgrade failed!${NC}"
       exit 1
     fi
+    #npm list -g
+    gum spin --spinner dot --title "Updating NPM packages..." --show-error -- npm update -g
+    status=$?
+    if [ $status -ne 0 ]; then
+      echo -e "${RED}NPM update failed!${NC}"
+      exit 1
+    fi
     # Check if a reboot is necessary
     nix_generations
     echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
