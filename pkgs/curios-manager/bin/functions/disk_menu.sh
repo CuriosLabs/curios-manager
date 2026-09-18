@@ -18,7 +18,7 @@ disk_menu() {
     disk_menu
     ;;
   " Root folder usage")
-    gdu / -C
+    sudo gdu / -C
     disk_menu
     ;;
   "󰋊 Disk S.M.A.R.T health status")
