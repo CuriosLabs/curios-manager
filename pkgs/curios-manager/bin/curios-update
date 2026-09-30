@@ -439,8 +439,6 @@ upgrade_curios() {
   cp -r -f "$extracted_source_path"/pkgs/ /etc/nixos/
   find /etc/nixos/ -type f -exec chmod 644 {} +
   find /etc/nixos/ -type d -exec chmod 755 {} +
-  # Updating system git_rev
-  update_curios_modules "curios.core.source.revision" "${git_rev_latest}"
   # Updating NixOS channel if necessary
   if nix-channel --list | grep -q "$NIX_CHANNEL_URL"; then
     echo -e "${BLUE}Nix channel is already up-to-date.${NC}"
@@ -453,8 +451,12 @@ upgrade_curios() {
   echo -e "${YELLOW}Updating packages...${NC}"
   # Updating $CURIOS_MODULES_FILE
   export_curios_modules
-  # Updating whole system and garbage collect
-  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace && nix-store --gc
+  # Updating whole system
+  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace
+  # Updating system git_rev
+  update_curios_modules "curios.core.source.revision" "${git_rev_latest}"
+  # Nix store garbage collect
+  nix-store --gc
   # Clear AppArmor cache if any.
   if command -v aa-status >/dev/null; then
     if systemctl is-active --quiet apparmor.service; then
