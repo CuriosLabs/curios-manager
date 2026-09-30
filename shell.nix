@@ -22,6 +22,7 @@ pkgs.mkShell {
     pamtester
     #nvtopPackages.full
     restic
+    rsync
     sbctl
     smartmontools
     terminaltexteffects

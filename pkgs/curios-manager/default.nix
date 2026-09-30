@@ -32,6 +32,7 @@ stdenvNoCC.mkDerivation rec {
     #pkgs.nvtopPackages.full
     pkgs.pamtester
     pkgs.restic
+    pkgs.rsync
     pkgs.smartmontools
     pkgs.terminaltexteffects
     pkgs.wget
