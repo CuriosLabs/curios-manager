@@ -220,6 +220,10 @@ if ! available rsync; then
   echo -e "${RED}rsync command not found!${NC}"
   exit 1
 fi
+if ! available git; then
+  echo -e "${RED}git command not found!${NC}"
+  exit 1
+fi
 if ! available fd; then
   echo -e "${RED}fd command not found!${NC}"
   exit 1
@@ -392,6 +396,15 @@ update_curios_modules() {
   echo -e "${GREEN}Module configuration updated: $key = $value${NC}"
 }
 
+verify_commit_signature() {
+  local repo="$1"
+  if ! git -C "$repo" -c gpg.format=ssh -c gpg.ssh.allowedSignersFile="/etc/curios/allowed_signers" verify-commit HEAD; then
+    echo -e "${RED}Refusing update: Git commit signature is invalid.${NC}" >&2
+    exit 1
+  fi
+  echo -e "${GREEN}Git commit signature verified.${NC}"
+}
+
 # Upgrade the system
 upgrade_curios() {
   local extracted_source_path
@@ -410,6 +423,7 @@ upgrade_curios() {
   echo -e "${GREEN}Downloading Git sources...${NC}"
   git clone --branch "${git_branch}" --single-branch --depth 1 "${git_repo}" "${extracted_source_path}"
   echo "Sources extracted to ${extracted_source_path}"
+  verify_commit_signature "${extracted_source_path}"
   # Checking extracted source
   if [ ! -f "${extracted_source_path}"/configuration.nix ]; then
     echo -e "${RED}configuration.nix file not found!${NC}"
@@ -465,6 +479,7 @@ upgrade_curios() {
   export_curios_modules
   # Updating whole system
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace
+  # TODO: if nixos-rebuild switch fail go back to previous generation
   # Updating system git_rev
   update_curios_modules "curios.core.source.revision" "${git_rev_latest}"
   # Nix store garbage collect
