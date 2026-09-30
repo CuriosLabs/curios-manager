@@ -19,7 +19,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.20"
+readonly SCRIPT_VERSION="0.21"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -28,10 +28,6 @@ readonly BLUE="\033[34;1m"     # Blue and bold
 readonly GREY="\033[37;1m"     # Grey and bold
 readonly YELLOW="\033[33;1;3m" # Yellow, bold and italic
 readonly NC="\033[0m"          # No Color
-
-#------------- Trap for cleanup
-TMP_DIR=$(mktemp -d -t curios-update-XXXXXX)
-trap 'rm -rf -- "$TMP_DIR"' EXIT
 
 #------------- Print help function
 usage() {
@@ -169,7 +165,7 @@ while true; do
     ;;
   --upgrade)
     UPGRADE_SYSTEM=1
-    CHECK_ONLINE=1
+    #CHECK_ONLINE=1
     shift
     ;;
   --version)
@@ -228,14 +224,13 @@ if ! available nixos-option; then
   echo -e "${RED}nixos-option command not found!${NC}"
   exit 1
 fi
-#if ! available nix-instantiate; then
-#  echo -e "${RED}nix-instantiate command not found!${NC}"
-#  exit 1
-#fi
+if ! available nix-instantiate; then
+  echo -e "${RED}nix-instantiate command not found!${NC}"
+  exit 1
+fi
 
 # HTTPS-only: verify TLS certs, refuse HTTP redirects (MITM)
 readonly CURL_SECURE=(curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 --max-redirs 5)
-readonly WGET_SECURE=(wget --https-only --secure-protocol=TLSv1_2 --check-certificate --max-redirect=5)
 
 # check online latest version
 get_latest_version() {
@@ -258,12 +253,12 @@ get_latest_version() {
 
 # Update Nix packages, system, collect garbage
 update_curios() {
-  echo -e "${GREEN}Launching Nix garbage collection...${NC}"
-  nix-collect-garbage --delete-older-than 7d >/dev/null
-  echo -e "${GREEN}Updating CuriOS system...${NC}"
+  echo -e "${GREEN}Updating Nix packages...${NC}"
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace >/dev/null
   echo -e "${GREEN}Updating Nix flakes...${NC}"
   nix profile upgrade --all >/dev/null
+  echo -e "${GREEN}Launching Nix garbage collection...${NC}"
+  nix-collect-garbage --delete-older-than 7d >/dev/null
   reboot_check
 }
 
@@ -281,7 +276,7 @@ reboot_check() {
 
 # Export all NixOS options values from 'curios' to a JSON file
 export_curios_modules() {
-  echo -e "${GREEN}Exporting CuriOS modules to $CURIOS_MODULES_FILE${NC}"
+  echo -e "${GREEN}Exporting CuriOS modules options to $CURIOS_MODULES_FILE${NC}"
   # Get all curios options, filter out errors and derivations
   # then wrap in a nix attribute set and convert to JSON using nix-instantiate
   if ! nixos-option -r curios >/dev/null 2>&1; then
@@ -395,24 +390,36 @@ update_curios_modules() {
 
 # Upgrade the system
 upgrade_curios() {
-  local extracted_source_path=""
+  local extracted_source_path
+  local git_repo
+  local git_branch
+  local git_rev
+  local git_rev_latest
+  local NIX_CHANNEL_URL
+  extracted_source_path=$(mktemp -d -t curios-update-XXXXXX)
+  trap "rm -rf -- $(printf '%q' "$extracted_source_path")" EXIT
 
-  echo -e "${GREEN}Launching Nix garbage collector...${NC}"
-  nix-store --gc
+  git_repo=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.url')
+  git_branch=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.branch')
+  git_rev=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.revision')
 
-  echo -e "${GREEN}Downloading ${LATEST_VERSION} sources...${NC}"
-  if [[ ! "$LATEST_SOURCE" =~ ^https://(api\.github\.com|codeload\.github\.com)/ ]]; then
-    echo -e "${RED}Refusing download: unexpected source URL.${NC}" >&2
-    exit 1
-  fi
-  "${WGET_SECURE[@]}" -O "${TMP_DIR}/CuriOS-${LATEST_VERSION}".tar.gz --show-progress "$LATEST_SOURCE"
-  mkdir -p "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ && tar -C "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ -xzf "${TMP_DIR}/CuriOS-${LATEST_VERSION}".tar.gz
-  extracted_source_path=$(fd . "${TMP_DIR}/CuriOS-${LATEST_VERSION}"/ --max-depth 1 --type d | head -n 1)
+  echo -e "${GREEN}Downloading Git sources...${NC}"
+  git clone --branch "${git_branch}" --single-branch --depth 1 "${git_repo}" "${extracted_source_path}"
   echo "Sources extracted to ${extracted_source_path}"
   # Checking extracted source
-  if [ ! -f "$extracted_source_path"/configuration.nix ]; then
+  if [ ! -f "${extracted_source_path}"/configuration.nix ]; then
     echo -e "${RED}configuration.nix file not found!${NC}"
     exit 1
+  fi
+  NIX_CHANNEL_URL=$(grep -oP -m 1 'channel\s*=\s*"\K[^"]+' "${extracted_source_path}"/configuration.nix)
+  if [ -z "$NIX_CHANNEL_URL" ]; then
+    echo -e "${RED}Nix channel not found in configuration.nix!${NC}"
+    exit 1
+  fi
+  git_rev_latest=$(git -C "${extracted_source_path}" rev-parse HEAD)
+  if [ "$git_rev" = "$git_rev_latest" ]; then
+    echo -e "${GREEN}System is already up-to-date.${NC}"
+    return 0
   fi
 
   # Installing
@@ -432,12 +439,9 @@ upgrade_curios() {
   cp -r -f "$extracted_source_path"/pkgs/ /etc/nixos/
   find /etc/nixos/ -type f -exec chmod 644 {} +
   find /etc/nixos/ -type d -exec chmod 755 {} +
+  # Updating system git_rev
+  update_curios_modules "curios.core.source.revision" "${git_rev_latest}"
   # Updating NixOS channel if necessary
-  NIX_CHANNEL_URL=$(grep -oP -m 1 'channel\s*=\s*"\K[^"]+' /etc/nixos/configuration.nix)
-  if [ -z "$NIX_CHANNEL_URL" ]; then
-    echo -e "${RED}Nix channel not found in configuration.nix!${NC}"
-    exit 1
-  fi
   if nix-channel --list | grep -q "$NIX_CHANNEL_URL"; then
     echo -e "${BLUE}Nix channel is already up-to-date.${NC}"
   else
@@ -449,8 +453,8 @@ upgrade_curios() {
   echo -e "${YELLOW}Updating packages...${NC}"
   # Updating $CURIOS_MODULES_FILE
   export_curios_modules
-  # Updating whole system
-  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace
+  # Updating whole system and garbage collect
+  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace && nix-store --gc
   # Clear AppArmor cache if any.
   if command -v aa-status >/dev/null; then
     if systemctl is-active --quiet apparmor.service; then
@@ -548,7 +552,8 @@ if [ $UPDATE_MODULES -eq 1 ]; then
   exit 0
 fi
 
-if [ $UPGRADABLE -eq 1 ] && [ $UPGRADE_SYSTEM -eq 1 ]; then
+#if [ $UPGRADABLE -eq 1 ] && [ $UPGRADE_SYSTEM -eq 1 ]; then
+if [ $UPGRADE_SYSTEM -eq 1 ]; then
   upgrade_curios
-  exit 2
+  exit 0
 fi
