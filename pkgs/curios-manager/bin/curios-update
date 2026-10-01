@@ -214,11 +214,12 @@ fi
 # Update Nix packages, system, collect garbage
 update_nix() {
   echo -e "${GREEN}Updating Nix packages...${NC}"
-  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --show-trace >/dev/null
+  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --no-build-output --quiet >/dev/null
   echo -e "${GREEN}Updating Nix flakes...${NC}"
   nix profile upgrade --all >/dev/null
   echo -e "${GREEN}Launching Nix garbage collection...${NC}"
   nix-collect-garbage --delete-older-than 15d --cores 0 --max-jobs auto --quiet >/dev/null
+  echo -e "${GREEN}Done.${NC}"
   reboot_check
 }
 
@@ -430,7 +431,7 @@ upgrade_curios() {
   # Updating $CURIOS_MODULES_FILE
   export_curios_modules
   # Updating whole system
-  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --no-build-output
+  nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --no-build-output --quiet
   # TODO: if nixos-rebuild switch fail go back to previous generation
   # Updating system git_rev
   update_curios_modules "curios.core.source.revision" "${git_rev_latest}"
