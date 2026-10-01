@@ -4,13 +4,11 @@ pkgs.mkShell {
   nativeBuildInputs = with pkgs; [
     # For pkgs/curios-manager/
     btop
-    curl
     duf
     efitools
     fastfetch
     fd
     fwupd
-    gnutar
     gdu
     gum
     jq
@@ -22,10 +20,10 @@ pkgs.mkShell {
     pamtester
     #nvtopPackages.full
     restic
+    rsync
     sbctl
     smartmontools
     terminaltexteffects
-    wget
     # For justfile
     statix
     shellcheck
