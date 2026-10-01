@@ -1,6 +1,6 @@
 # Curios Manager
 
-[![NixOS 25.11](https://img.shields.io/badge/NixOS-25.11-blue.svg?style=flat-square&logo=NixOS&logoColor=white)](https://nixos.org)
+[![NixOS 26.05](https://img.shields.io/badge/NixOS-26.05-blue.svg?style=flat-square&logo=NixOS&logoColor=white)](https://nixos.org)
 [![X Follow](https://img.shields.io/twitter/follow/CuriosLabs?style=social)](https://x.com/CuriosLabs)
 
 A modern TUI to control your [CuriOS](https://github.com/CuriosLabs/CuriOS) system.
