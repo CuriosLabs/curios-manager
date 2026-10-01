@@ -119,15 +119,14 @@ fi
 source /etc/os-release
 
 nix_generations() {
-  LIST_GEN=$(gum spin --spinner dot --title "Retrieving NixOS information..." -- nixos-rebuild list-generations --json)
+  LIST_GEN=$(gum spin --spinner dot --title "Retrieving system informations..." -- nixos-rebuild list-generations --json)
   LIST_GEN_DATE=$(echo "$LIST_GEN" | jq -r '.[0].date')
   LIST_GEN_KERNEL=$(echo "$LIST_GEN" | jq -r '.[0].kernelVersion')
 }
 
 reboot_check() {
   # Check if a reboot is necessary
-  LIST_GEN=$(gum spin --spinner dot --title "Retrieving NixOS information..." -- nixos-rebuild list-generations --json)
-  LIST_GEN_KERNEL=$(echo "$LIST_GEN" | jq -r '.[0].kernelVersion')
+  nix_generations
   if [[ $(uname -r) != "$LIST_GEN_KERNEL" ]]; then
     echo -e "A new kernel was installed - ${YELLOW}You should REBOOT now${NC}."
     echo -e "${BLUE}Please${NC} ensure that all other applications are properly closed."

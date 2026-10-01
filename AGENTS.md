@@ -36,7 +36,7 @@ The project follows a modular architecture. The main directories are:
   of the TUI. User interaction is made with [Gum](https://github.com/charmbracelet/gum).
 - `pkgs/curios-manager/bin/curios-update`: A bash script that manage a CuriOS
   system from the command line. It can upgrade/update the whole
-  system. `curios-update --check` can be called from a systemd timer.
+  system.
 - `default.nix`: The default nix build/import package file.
 - `shell.nix`: A Nix configuration file for the `nix-shell` command. It will setup
 a temporary environment with the specified dependencies, tools and configurations
