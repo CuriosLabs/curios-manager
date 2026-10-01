@@ -426,7 +426,7 @@ upgrade_curios() {
     nix-channel --update
   fi
   # Updating system
-  echo -e "${YELLOW}Updating packages...${NC}"
+  echo -e "${YELLOW}Upgrading system...${NC}"
   # Updating $CURIOS_MODULES_FILE
   export_curios_modules
   # Updating whole system
@@ -435,7 +435,7 @@ upgrade_curios() {
   # Updating system git_rev
   update_curios_modules "curios.core.source.revision" "${git_rev_latest}"
   # Nix store garbage collect
-  nix-collect-garbage --delete-older-than 15d --cores 0 --max-jobs auto --quiete >/dev/null
+  nix-collect-garbage --delete-older-than 15d --cores 0 --max-jobs auto --quiet >/dev/null
   # Clear AppArmor cache if any.
   if command -v aa-status >/dev/null; then
     if systemctl is-active --quiet apparmor.service; then
