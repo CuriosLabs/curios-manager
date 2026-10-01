@@ -33,7 +33,7 @@ publish VERSION:
   @just hash-update {{VERSION}}
   sleep 5
   gh auth status
-  gh pr create --title "Release {{VERSION}}" --base main --assignee "@me"
+  gh pr create --title "Release {{VERSION}}" --body "" --base main --assignee "@me"
 
 # Update version number, create Git commit and tag and push it.
 tag VERSION:
