@@ -220,6 +220,7 @@ update_nix() {
   echo -e "${GREEN}Launching Nix garbage collection...${NC}"
   nix-collect-garbage --delete-older-than 15d --cores 0 --max-jobs auto --quiet >/dev/null
   echo -e "${GREEN}Done.${NC}"
+  nixos-rebuild list-generations | head -n 6
   reboot_check
 }
 
@@ -437,6 +438,8 @@ upgrade_curios() {
   update_curios_modules "curios.core.source.revision" "${git_rev_latest}"
   # Nix store garbage collect
   nix-collect-garbage --delete-older-than 15d --cores 0 --max-jobs auto --quiet >/dev/null
+  # For information
+  nixos-rebuild list-generations | head -n 6
   # Clear AppArmor cache if any.
   if command -v aa-status >/dev/null; then
     if systemctl is-active --quiet apparmor.service; then
