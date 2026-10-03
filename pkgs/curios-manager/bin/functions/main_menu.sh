@@ -58,11 +58,7 @@ main_menu() {
     fi
     ;;
   " Themes")
-    if [ ! -d /run/current-system/sw/share/themes/curios/ ]; then
-      echo -e "${RED}Themes folder not found!${NC}"
-    else
-      themes_menu
-    fi
+    themes_menu
     ;;
   "? Help")
     help_menu

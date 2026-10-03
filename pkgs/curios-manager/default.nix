@@ -78,6 +78,7 @@ stdenvNoCC.mkDerivation rec {
     description = "CuriOS manager";
     homepage = "https://github.com/CuriosLabs/curios-manager";
     license = lib.licenses.gpl3Only;
+    mainProgram = "curios-manager";
     platforms = lib.platforms.linux;
   };
 }
