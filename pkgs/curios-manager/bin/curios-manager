@@ -134,6 +134,17 @@ reboot_check() {
   fi
 }
 
+#------------- Print Git repo informations
+print_core_info() {
+  local git_repo
+  local git_branch
+  local git_rev
+  git_repo=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.url')
+  git_branch=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.branch')
+  git_rev=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.revision')
+  echo -e "${GREEN}Git source:${NC} $git_repo ${GREEN}on branch:${NC} $git_branch ${GREEN}at revision:${NC} $git_rev"
+}
+
 # CuriOS system check and print warning to user.
 warning_print() {
   if [ -f /etc/nixos/user-me.nix ]; then
