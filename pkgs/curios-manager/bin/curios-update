@@ -38,13 +38,14 @@ ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}                  Print this message.
   ${GREY}--export${NC}                    Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
   ${GREY}--show-modules${NC}              Show all CuriOS module settings stored in '$CURIOS_MODULES_FILE'. JSON output.
-  ${GREY}--search-modules NAME${NC}       Search for a CuriOS module setting key by name in '$CURIOS_MODULES_FILE'. JSON output.
-  ${GREY}--nixos-option KEY${NC}          Query the current value of any NixOS option or CuriOS module by its key.
-  ${GREY}--update-module KEY VALUE${NC}   Change a CuriOS module setting (updates '$CURIOS_MODULES_FILE').
+  ${GREY}--search-modules ${YELLOW}NAME${NC}       Search for a CuriOS module setting key by name in '$CURIOS_MODULES_FILE'. JSON output.
+  ${GREY}--nixos-option ${YELLOW}KEY${NC}          Query the current value of any NixOS option or CuriOS module by its key.
+  ${GREY}--update-module ${YELLOW}KEY VALUE${NC}   Change a CuriOS module setting (updates '$CURIOS_MODULES_FILE').
   ${GREY}--update${NC}                    Update system, installed packages, Nix flakes, do a Nix collect garbage and warn user if a reboot is necessary.
   ${GREY}--upgrade${NC}                   Download latest CuriOS system if needed and install it. --update is implied.
-  ${GREY}--search-pkgs PKG_NAME${NC}      Search for a package in NixOS channel using its name. JSON output, use 'package_attr_name' key value for --add-pkg option.
-  ${GREY}--add-pkg PKG_NAME${NC}          Add a NixOS package into '/etc/nixos/settings.nix', and update the system (--update is implied).
+  ${GREY}--search-pkgs ${YELLOW}PKG_NAME${NC}      Search for a package in NixOS channel using its name. JSON output, use 'package_attr_name' key value for --add-pkg option.
+  ${GREY}--add-pkg ${YELLOW}PKG_NAME${NC}          Add a NixOS package into '/etc/nixos/settings.nix', and update the system (--update is implied).
+  ${GREY}--fresh-install ${YELLOW}DIR${NC}         Script to run once on a fresh install.
   ${GREY}-v, --verbose${NC}               Print more information.
   ${GREY}--version${NC}                   Print version number and exit.
 
@@ -86,6 +87,7 @@ UPDATE_SYSTEM=0
 SEARCH_PKGS=0
 ADD_PKG=0
 UPGRADE_SYSTEM=0
+FRESH_INSTALL=0
 NIX_CHANNEL_URL=""
 UPDATE_KEY=""
 UPDATE_VALUE=""
@@ -93,11 +95,12 @@ NIXOS_OPTION_PATH=""
 SEARCH_PKG_NAME=""
 SEARCH_MODULE_KEY=""
 ADD_PKG_NAME=""
+FRESH_INSTALL_DIR=""
 EXTRACTED_SOURCE_PATH=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,export,show-modules,search-modules:,nixos-option:,search-pkgs:,add-pkg:,update-module:,update,upgrade" --options ":hvs" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,export,show-modules,search-modules:,nixos-option:,search-pkgs:,add-pkg:,update-module:,update,upgrade,fresh-install:" --options ":hvs" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -153,6 +156,11 @@ while true; do
   --upgrade)
     UPGRADE_SYSTEM=1
     shift
+    ;;
+  --fresh-install)
+    FRESH_INSTALL=1
+    FRESH_INSTALL_DIR="$2"
+    shift 2
     ;;
   --version)
     echo "$SCRIPT_VERSION"
@@ -350,6 +358,18 @@ update_curios_modules() {
   echo -e "${GREEN}Module configuration updated: $key = $value${NC}"
 }
 
+# Check for a fresh install marker and proceed if present
+fresh_install() {
+  local dir="$1"
+  if [ ! -f "$dir/.curios/freshinstall" ]; then
+    echo -e "Not a fresh install."
+    exit 0
+  fi
+  echo -e "${GREEN}Fresh install detected...${NC}"
+  /run/current-system/sw/bin/curios-dotfiles --themes "One Dark" "$dir"
+  rm "$dir/.curios/freshinstall"
+}
+
 verify_commit_signature() {
   local repo="$1"
   if ! git -C "$repo" -c gpg.format=ssh -c gpg.ssh.allowedSignersFile="/etc/curios/allowed_signers" verify-commit HEAD; then
@@ -520,5 +540,14 @@ fi
 
 if [ $UPGRADE_SYSTEM -eq 1 ]; then
   upgrade_curios
+  exit 0
+fi
+
+if [ $FRESH_INSTALL -eq 1 ]; then
+  if [ -z "$FRESH_INSTALL_DIR" ]; then
+    echo -e "${RED}Error: --fresh-install requires 1 argument: DIR${NC}"
+    exit 1
+  fi
+  fresh_install "$FRESH_INSTALL_DIR"
   exit 0
 fi
