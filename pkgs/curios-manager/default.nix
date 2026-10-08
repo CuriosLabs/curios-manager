@@ -15,6 +15,7 @@ stdenvNoCC.mkDerivation rec {
 
   buildInputs = [
     pkgs.btop
+    pkgs.coreutils
     pkgs.duf
     pkgs.fastfetch
     pkgs.fd
@@ -34,6 +35,7 @@ stdenvNoCC.mkDerivation rec {
     pkgs.rsync
     pkgs.smartmontools
     pkgs.terminaltexteffects
+    pkgs.util-linux
   ];
   nativeBuildInputs = [ makeWrapper ];
   dontConfigure = true;
