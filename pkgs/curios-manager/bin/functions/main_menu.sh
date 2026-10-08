@@ -65,7 +65,8 @@ main_menu() {
     ;;
   " About")
     nix_generations
-    echo -e "${VARIANT} ${GREY}(${VARIANT_ID})${NC} - based on ${PRETTY_NAME}"
+    echo -e "${VARIANT} ${GREY}(${VARIANT_ID})${NC} - based on ${BLUE}${PRETTY_NAME}${NC}"
+    print_core_info
     echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
     echo -e "CuriOS manager version: $SCRIPT_VERSION"
     echo -e "Visit ${BLUE}${CURIOS_SRC_URL}${NC}"
