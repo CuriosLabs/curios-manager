@@ -5,7 +5,7 @@
 
 A modern TUI to control your [CuriOS](https://github.com/CuriosLabs/CuriOS) system.
 
-![CuriOS Manager TUI](https://github.com/CuriosLabs/CuriOS/blob/master/img/curios-manager_main-menu.png?raw=true "CuriOS manager")
+![CuriOS Manager TUI](https://github.com/CuriosLabs/CuriOS/blob/release/26.05.10/img/curios-manager_main-menu2.png?raw=true "CuriOS manager")
 
 -----
 
@@ -17,38 +17,38 @@ Use the appropriate shell environment before with `nix-shell shell.nix`.
 - **Lint Files**: Check code quality for Nix and Bash files:
 
   ```bash
-  just lint
+  nix-shell shell.nix --run "just lint"
   ```
 
 - **Test Application**: Launch the `curios-manager` TUI:
 
   ```bash
-  just test
+  nix-shell shell.nix --run "just test"
   ```
 
 - **Publish a new version**: Create a new git tag, push it, build it and update
 the hash signature for the Nix package:
 
   ```bash
-  just publish 0.21
+  nix-shell shell.nix --run "just publish 0.21"
   ```
 
 - **Run**: Build the Nix package (from Github) and run it:
 
   ```bash
-  just run
+  nix-shell shell.nix --run "just run"
   ```
 
 - **Clean**: Remove build artifacts:
 
   ```bash
-  just clean
+  nix-shell shell.nix --run "just clean"
   ```
 
 - **List Commands**: Show all available recipes:
 
   ```bash
-  just --list
+  nix-shell shell.nix --run "just --list"
   ```
 
 ## License
