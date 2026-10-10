@@ -52,6 +52,8 @@ main_menu() {
       # Settings have changed, updating system.
       sudo whoami 1>/dev/null # Force prompt for sudo password now
       gum spin --spinner dot --title "Updating system..." --show-error -- sudo nixos-rebuild switch --cores 0 --max-jobs auto
+      sudo whoami 1>/dev/null # Force prompt for sudo password now
+      gum spin --spinner dot --title "Collecting garbage..." --show-error -- sudo nix-store --gc
       nix_generations
       echo -e "Latest update: ${LIST_GEN_DATE} - Kernel: ${LIST_GEN_KERNEL}"
       reboot_check
