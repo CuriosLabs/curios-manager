@@ -40,6 +40,7 @@ stdenvNoCC.mkDerivation rec {
     pkgs.sbctl
     pkgs.smartmontools
     pkgs.snitch
+    pkgs.sudo
     pkgs.terminaltexteffects
     pkgs.util-linux
     pkgs.xdg-utils
