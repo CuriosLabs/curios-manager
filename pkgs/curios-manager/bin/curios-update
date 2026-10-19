@@ -16,7 +16,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.53.0"
+readonly SCRIPT_VERSION="0.53.1"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -240,7 +240,7 @@ reboot_check() {
   if [[ $(uname -r) != "$LIST_GEN_KERNEL" ]]; then
     echo -e "A new kernel was installed - ${YELLOW}You should REBOOT now${NC}."
     # Send a notification to user with UID 1000
-    sudo -u "#1000" DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send -a "System Update" --icon="curios" --urgency=critical --expire-time=8000 "A new kernel was installed - You SHOULD reboot now!"
+    /run/current-system/sw/bin/sudo -u "#1000" DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send -a "System Update" --icon="curios" --urgency=critical --expire-time=8000 "A new kernel was installed - You SHOULD reboot now!"
   fi
 }
 
