@@ -383,8 +383,7 @@ fresh_install() {
     exit 0
   fi
   echo -e "${GREEN}Fresh install detected...${NC}"
-  system_lang=$(/run/current-system/sw/bin/curios-update --show-modules | /run/current-system/sw/bin/jq -r '.curios.system.keyboard')
-  /run/current-system/sw/bin/curios-dotfiles --themes "One Dark" --lang "$system_lang" "$dir"
+  /run/current-system/sw/bin/curios-dotfiles --themes "One Dark" "$dir"
   rm -f "$dir/.curios/freshinstall"
 }
 
