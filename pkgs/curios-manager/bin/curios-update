@@ -6,17 +6,20 @@
 #       curios-update [options]
 # Options:
 #     -h, --help         Print this message.
+#     --check            Check if a CuriOS update is available (returns 0 if update available).
 #     --upgrade          Download latest CuriOS and install it, upgrade nix packages..
 #     -v, --verbose      Print more information.
 #     --version          Print version number and exit.
 #
 # Examples:
+#    Check for updates:
+#      curios-update --check
 #    Upgrade system:
 #      curios-update --upgrade
 
 set -eu
 
-readonly SCRIPT_VERSION="0.53.1"
+readonly SCRIPT_VERSION="0.54.1"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -36,6 +39,7 @@ ${GREY}USAGE:${NC}
 
 ${GREY}OPTIONS:${NC}
   ${GREY}-h, --help${NC}                  Print this message.
+  ${GREY}--check${NC}                     Check if a CuriOS update is available. Returns 0 if update available, 1 if up-to-date.
   ${GREY}--export${NC}                    Export current CuriOS modules configuration to '$CURIOS_MODULES_FILE'.
   ${GREY}--show-modules${NC}              Show all CuriOS module settings stored in '$CURIOS_MODULES_FILE'. JSON output.
   ${GREY}--search-modules ${YELLOW}NAME${NC}       Search for a CuriOS module setting key by name in '$CURIOS_MODULES_FILE'. JSON output.
@@ -50,8 +54,10 @@ ${GREY}OPTIONS:${NC}
   ${GREY}--version${NC}                   Print version number and exit.
 
 ${GREY}EXAMPLES:${NC}
-  Upgrade whole system to latest version:
-    ${GREY}sudo curios-update --upgrade${NC}
+  Check if the system needs to be upgraded:
+    ${GREY}curios-update --check --verbose${NC}
+  Upgrade whole system to latest version if needed:
+    ${GREY}curios-update --check && sudo curios-update --upgrade${NC}
   Export CuriOS current modules configuration:
     ${GREY}sudo curios-update --export${NC}
 
@@ -78,6 +84,7 @@ ${GREY}EXAMPLES:${NC}
 
 #------------- var init state
 VERBOSE=0
+CHECK_UPDATE=0
 EXPORT_MODULES=0
 SHOW_MODULES=0
 SEARCH_MODULES=0
@@ -100,7 +107,7 @@ EXTRACTED_SOURCE_PATH=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,export,show-modules,search-modules:,nixos-option:,search-pkgs:,add-pkg:,update-module:,update,upgrade,fresh-install:" --options ":hvs" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,search-modules:,nixos-option:,search-pkgs:,add-pkg:,update-module:,update,upgrade,fresh-install:" --options ":hvs" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -115,6 +122,10 @@ while true; do
     ;;
   -h | --help)
     usage
+    ;;
+  --check)
+    CHECK_UPDATE=1
+    shift
     ;;
   -s | --show-modules)
     SHOW_MODULES=1
@@ -480,6 +491,44 @@ upgrade_curios() {
   reboot_check
 }
 
+# Check if a CuriOS update is available on the remote Git repository
+# Returns 0 (true) if an update is available, 1 (false) if system is up-to-date
+check_update() {
+  local git_repo
+  local git_branch
+  local git_rev
+  local git_rev_latest
+
+  git_repo=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.url')
+  git_branch=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.branch')
+  git_rev=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.revision')
+
+  if [ $VERBOSE -eq 1 ]; then
+    echo "Git repo: ${git_repo}"
+    echo "Git branch: ${git_branch}"
+    echo "Current revision: ${git_rev}"
+  fi
+
+  # Get the latest remote revision without cloning
+  git_rev_latest=$(git ls-remote "${git_repo}" "refs/heads/${git_branch}" | awk '{print $1}')
+
+  if [ $VERBOSE -eq 1 ]; then
+    echo "Latest remote revision: ${git_rev_latest}"
+  fi
+
+  if [ "$git_rev" = "$git_rev_latest" ]; then
+    if [ $VERBOSE -eq 1 ]; then
+      echo -e "${GREEN}System is up-to-date.${NC}"
+    fi
+    return 1
+  else
+    if [ $VERBOSE -eq 1 ]; then
+      echo -e "${YELLOW}Update available! Run 'curios-update --upgrade' to update.${NC}"
+    fi
+    return 0
+  fi
+}
+
 # Get current OS version
 if [ ! -f /etc/os-release ]; then
   echo -e "${RED}/etc/os-release file not found!${NC}"
@@ -487,6 +536,14 @@ if [ ! -f /etc/os-release ]; then
 fi
 source /etc/os-release
 #echo -e "CuriOS current version is ${GREY}${VARIANT_ID}${NC}"
+
+if [ $CHECK_UPDATE -eq 1 ]; then
+  if check_update; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
 
 if [ $UPDATE_SYSTEM -eq 1 ]; then
   update_nix
