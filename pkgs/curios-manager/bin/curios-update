@@ -19,7 +19,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.54.1"
+readonly SCRIPT_VERSION="0.54.2"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -373,7 +373,6 @@ update_curios_modules() {
 # Also proceed if the ~/.curios directory doesn't exist (fresh system)
 fresh_install() {
   local dir="$1"
-  local system_lang
   if [ ! -d "$dir/.curios" ]; then
     /run/current-system/sw/bin/curios-dotfiles --upgrade "$dir"
     touch "$dir/.curios/freshinstall"
@@ -383,8 +382,7 @@ fresh_install() {
     exit 0
   fi
   echo -e "${GREEN}Fresh install detected...${NC}"
-  system_lang=$(/run/current-system/sw/bin/curios-update --show-modules | /run/current-system/sw/bin/jq -r '.curios.system.keyboard')
-  /run/current-system/sw/bin/curios-dotfiles --themes "One Dark" --lang "$system_lang" "$dir"
+  /run/current-system/sw/bin/curios-dotfiles --themes "One Dark" "$dir"
   rm -f "$dir/.curios/freshinstall"
 }
 
