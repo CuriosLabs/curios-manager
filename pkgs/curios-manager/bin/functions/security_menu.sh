@@ -915,7 +915,7 @@ _enable_secure_boot() {
   echo ""
 
   if gum confirm "Reboot now to enter Firmware Setup?"; then
-    systemctl reboot
+    systemctl reboot --firmware-setup
   else
     echo -e "${YELLOW}You can reboot later. Remember to run this menu again after entering Setup Mode.${NC}"
   fi
