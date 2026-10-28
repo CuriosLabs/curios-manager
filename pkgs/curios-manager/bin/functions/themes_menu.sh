@@ -29,8 +29,14 @@ themes_menu() {
     fi
   done
 
-  THEMES_MENU=$(gum choose --header "Select an option:" "${GUM_ARGS[@]}" -- "${THEMES[@]}" " Back")
+  THEMES_MENU=$(gum choose --height 12 --header "Select an option:" "${GUM_ARGS[@]}" -- "${THEMES[@]}" " Upgrade" " Back")
   case $THEMES_MENU in
+  " Upgrade")
+    local system_lang
+    system_lang=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.system.keyboard')
+    gum spin --spinner dot --title "Upgrading themes..." --show-error -- curios-dotfiles --upgrade --lang "$system_lang" "$HOME"
+    themes_menu
+    ;;
   " Back")
     main_menu
     ;;
