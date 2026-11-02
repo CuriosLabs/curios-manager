@@ -19,7 +19,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.54.3"
+readonly SCRIPT_VERSION="0.56.1"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -230,9 +230,19 @@ if ! available nix-instantiate; then
   exit 1
 fi
 
+# Clear a stale 'nixos-rebuild-switch-to-configuration' transient unit left by a
+# previously interrupted nixos-rebuild (e.g. service killed by SIGTERM). Otherwise
+# the next 'nixos-rebuild switch' fails with "Unit ... was already loaded or has a
+# fragment file".
+clean_stale_rebuild_unit() {
+  systemctl stop nixos-rebuild-switch-to-configuration.service 2>/dev/null || true
+  systemctl reset-failed nixos-rebuild-switch-to-configuration.service 2>/dev/null || true
+}
+
 # Update Nix packages, system, collect garbage
 update_nix() {
   echo -e "${GREEN}Updating Nix packages...${NC}"
+  clean_stale_rebuild_unit
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --no-build-output --quiet >/dev/null
   echo -e "${GREEN}Updating Nix flakes...${NC}"
   nix profile upgrade --all >/dev/null
@@ -468,6 +478,7 @@ upgrade_curios() {
   # Updating $CURIOS_MODULES_FILE
   export_curios_modules
   # Updating whole system
+  clean_stale_rebuild_unit
   nixos-rebuild switch --upgrade --cores 0 --max-jobs auto --no-build-output --quiet
   # TODO: if nixos-rebuild switch fail go back to previous generation
   # Updating system git_rev
