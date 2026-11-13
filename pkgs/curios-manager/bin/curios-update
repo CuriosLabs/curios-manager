@@ -8,6 +8,7 @@
 #     -h, --help         Print this message.
 #     --check            Check if a CuriOS update is available (returns 0 if update available).
 #     --upgrade          Download latest CuriOS and install it, upgrade nix packages..
+#     --pcr-check        TPM2 PCR integrity check (requires root).
 #     -v, --verbose      Print more information.
 #     --version          Print version number and exit.
 #
@@ -50,6 +51,7 @@ ${GREY}OPTIONS:${NC}
   ${GREY}--search-pkgs ${YELLOW}PKG_NAME${NC}      Search for a package in NixOS channel using its name. JSON output, use 'package_attr_name' key value for --add-pkg option.
   ${GREY}--add-pkg ${YELLOW}PKG_NAME${NC}          Add a NixOS package into '/etc/nixos/settings.nix', and update the system (--update is implied).
   ${GREY}--fresh-install ${YELLOW}DIR${NC}         Script to run once on a fresh install.
+  ${GREY}--pcr-check${NC}                   TPM2 PCR integrity check: compare stable PCRs (0,4,7) against baseline. Requires root.
   ${GREY}-v, --verbose${NC}               Print more information.
   ${GREY}--version${NC}                   Print version number and exit.
 
@@ -78,6 +80,9 @@ ${GREY}EXAMPLES:${NC}
     ${GREY}curios-update --search-pkgs blender${NC}
   Then install the previously found package:
     ${GREY}sudo curios-update --add-pkg blender${NC}
+
+  Check TPM2 PCR integrity (root required):
+    ${GREY}sudo curios-update --pcr-check${NC}
 "
   exit 0
 }
@@ -95,6 +100,7 @@ SEARCH_PKGS=0
 ADD_PKG=0
 UPGRADE_SYSTEM=0
 FRESH_INSTALL=0
+PCR_CHECK=0
 NIX_CHANNEL_URL=""
 UPDATE_KEY=""
 UPDATE_VALUE=""
@@ -107,7 +113,7 @@ EXTRACTED_SOURCE_PATH=""
 SCRIPT_PATH="$(dirname "$0")"
 
 #------------- Scripts arguments parse options
-ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,search-modules:,nixos-option:,search-pkgs:,add-pkg:,update-module:,update,upgrade,fresh-install:" --options ":hvs" -- "$@")
+ARGS=$(getopt --longoptions="verbose,version,help,check,export,show-modules,search-modules:,nixos-option:,search-pkgs:,add-pkg:,update-module:,update,upgrade,fresh-install:,pcr-check" --options ":hvs" -- "$@")
 if [ $# -eq 0 ]; then
   usage
 fi
@@ -173,6 +179,10 @@ while true; do
     FRESH_INSTALL_DIR="$2"
     shift 2
     ;;
+  --pcr-check)
+    PCR_CHECK=1
+    shift
+    ;;
   --version)
     echo "$SCRIPT_VERSION"
     exit 0
@@ -192,8 +202,8 @@ if [ $VERBOSE -eq 1 ]; then
   echo "PATH: $PATH"
 fi
 
-# This script must be run as root for --upgrade, --update, --export, --add-pkg and --update-module option
-if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 || $ADD_PKG -eq 1 || $UPDATE_MODULES -eq 1 ]]; then
+# This script must be run as root for --upgrade, --update, --export, --add-pkg, --update-module and --pcr-check option
+if [[ "$EUID" -ne 0 ]] && [[ $UPGRADE_SYSTEM -eq 1 || $UPDATE_SYSTEM -eq 1 || $EXPORT_MODULES -eq 1 || $ADD_PKG -eq 1 || $UPDATE_MODULES -eq 1 || $PCR_CHECK -eq 1 ]]; then
   echo -e "${RED}This script MUST be run as root!${NC}" >&2
   exit 1
 fi
@@ -264,6 +274,41 @@ reboot_check() {
     # Send a notification to user with UID 1000
     /run/current-system/sw/bin/sudo -u "#1000" DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send -a "System Update" --icon="curios" --urgency=critical --expire-time=8000 "A new kernel was installed - You SHOULD reboot now!"
   fi
+}
+
+# TPM2 PCR integrity check: compare stable PCRs (0,4,7) against baseline
+# and alert the user if they changed (e.g. Secure Boot disabled, bootloader modified)
+# Check with: journalctl -t curios-pcr
+pcr_check() {
+  BASELINE=/var/lib/curios/pcr-baseline
+  mkdir -p /var/lib/curios
+
+  # Stable PCRs: 0 (firmware), 4 (bootloader), 7 (Secure Boot state)
+  CURRENT=$(/run/current-system/sw/bin/tpm2_pcrread sha256:0,4,7 | /run/current-system/sw/bin/awk '{$1=$1};1')
+
+  if [ ! -f "$BASELINE" ]; then
+    echo "$CURRENT" >"$BASELINE"
+    /run/current-system/sw/bin/logger -t curios-pcr "Baseline created"
+    exit 0
+  fi
+
+  if ! diff <(cat "$BASELINE") <(echo "$CURRENT") >/dev/null; then
+    /run/current-system/sw/bin/logger -t curios-pcr "ALERT: TPM2 PCRs mismatch!"
+    # Notify all logged-in users via desktop notification
+    #for session in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'); do
+    #  user=$(loginctl show-session "$session" -p Name --value 2>/dev/null)
+    #  uid=$(id -u "$user" 2>/dev/null)
+    #  if [ -n "$user" ] && [ -n "$uid" ]; then
+    #    sudo -u "$user" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
+    #      notify-send --urgency=critical --icon=dialog-warning \
+    #      "⚠️ CuriOS Security Alert" \
+    #      "TPM measurements changed since last boot (PCR 0/4/7). System may be compromised. Check: journalctl -t curios-pcr"
+    #  fi
+    #done
+  else
+    /run/current-system/sw/bin/logger -t curios-pcr "TPM2 PCRs check OK"
+  fi
+
 }
 
 # Export all NixOS options values from 'curios' to a JSON file
@@ -624,5 +669,10 @@ if [ $FRESH_INSTALL -eq 1 ]; then
     exit 1
   fi
   fresh_install "$FRESH_INSTALL_DIR"
+  exit 0
+fi
+
+if [ $PCR_CHECK -eq 1 ]; then
+  pcr_check
   exit 0
 fi

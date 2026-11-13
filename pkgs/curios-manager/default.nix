@@ -22,6 +22,7 @@ stdenvNoCC.mkDerivation rec {
     pkgs.fastfetch
     pkgs.fd
     pkgs.fwupd
+    pkgs.gawk
     pkgs.git
     pkgs.gdu
     pkgs.gum
