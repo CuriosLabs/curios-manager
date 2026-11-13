@@ -247,8 +247,8 @@ update_nix() {
   echo -e "${GREEN}Updating Nix flakes...${NC}"
   nix profile upgrade --all >/dev/null
   echo -e "${GREEN}Launching Nix garbage collection...${NC}"
-  nix-env -p /nix/var/nix/profiles/system --delete-generations +4
-  nix-collect-garbage -d --cores 0 --max-jobs auto --quiet >/dev/null
+  nix-env --delete-generations +4 --cores 0 --max-jobs auto
+  nix-collect-garbage --cores 0 --max-jobs auto --quiet >/dev/null
   echo -e "${GREEN}Done.${NC}"
   nixos-rebuild list-generations | head -n 6
   reboot_check
@@ -485,8 +485,8 @@ upgrade_curios() {
   # Updating system git_rev
   update_curios_modules "curios.core.source.revision" "${git_rev_latest}"
   # Nix store garbage collect
-  nix-env -p /nix/var/nix/profiles/system --delete-generations +4
-  nix-collect-garbage -d --cores 0 --max-jobs auto --quiet >/dev/null
+  nix-env --delete-generations +4 --cores 0 --max-jobs auto
+  nix-collect-garbage --cores 0 --max-jobs auto --quiet >/dev/null
   # For information
   nixos-rebuild list-generations | head -n 6
   # Clear AppArmor cache if any.
