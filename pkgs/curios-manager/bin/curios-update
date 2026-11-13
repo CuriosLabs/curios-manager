@@ -235,10 +235,10 @@ if ! available nixos-option; then
   echo -e "${RED}nixos-option command not found!${NC}"
   exit 1
 fi
-if ! available nix-instantiate; then
-  echo -e "${RED}nix-instantiate command not found!${NC}"
-  exit 1
-fi
+#if ! available nix-instantiate; then
+#  echo -e "${RED}nix-instantiate command not found!${NC}"
+#  exit 1
+#fi
 
 # Clear a stale 'nixos-rebuild-switch-to-configuration' transient unit left by a
 # previously interrupted nixos-rebuild (e.g. service killed by SIGTERM). Otherwise
@@ -461,9 +461,9 @@ upgrade_curios() {
   EXTRACTED_SOURCE_PATH=$(mktemp -d -t curios-update-XXXXXX)
   trap 'rm -rf -- "$EXTRACTED_SOURCE_PATH"' EXIT
 
-  git_repo=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.url')
-  git_branch=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.branch')
-  git_rev=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.revision')
+  git_repo=$(/run/current-system/sw/bin/nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.url')
+  git_branch=$(/run/current-system/sw/bin/nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.branch')
+  git_rev=$(/run/current-system/sw/bin/nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.revision')
 
   echo -e "${GREEN}Downloading Git sources...${NC}"
   git clone --branch "${git_branch}" --single-branch --depth 1 "${git_repo}" "${EXTRACTED_SOURCE_PATH}"
@@ -555,9 +555,9 @@ check_update() {
   local git_rev
   local git_rev_latest
 
-  git_repo=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.url')
-  git_branch=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.branch')
-  git_rev=$(nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.revision')
+  git_repo=$(/run/current-system/sw/bin/nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.url')
+  git_branch=$(/run/current-system/sw/bin/nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.branch')
+  git_rev=$(/run/current-system/sw/bin/nix-instantiate --eval --raw --expr '(import <nixpkgs/nixos> {}).config.curios.core.source.revision')
 
   if [ $VERBOSE -eq 1 ]; then
     echo "Git repo: ${git_repo}"
