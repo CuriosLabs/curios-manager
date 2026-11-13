@@ -284,7 +284,7 @@ pcr_check() {
   mkdir -p /var/lib/curios
 
   # Stable PCRs: 0 (firmware), 4 (bootloader), 7 (Secure Boot state)
-  CURRENT=$(/run/current-system/sw/bin/tpm2_pcrread sha256:0,4,7 | /run/current-system/sw/bin/awk '{$1=$1};1')
+  CURRENT=$(/run/current-system/sw/bin/tpm2_pcrread sha256:0,4,7 2>/dev/null | /run/current-system/sw/bin/awk '{$1=$1};1')
 
   if [ ! -f "$BASELINE" ]; then
     echo "$CURRENT" >"$BASELINE"
