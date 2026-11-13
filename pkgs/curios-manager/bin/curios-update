@@ -20,7 +20,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.60.5"
+readonly SCRIPT_VERSION="0.60.6"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -292,7 +292,7 @@ pcr_check() {
     exit 0
   fi
 
-  if ! diff <(cat "$BASELINE") <(echo "$CURRENT") >/dev/null; then
+  if ! /run/current-system/sw/bin/diff <(/run/current-system/sw/bin/cat "$BASELINE") <(/run/current-system/sw/bin/echo "$CURRENT") >/dev/null; then
     /run/current-system/sw/bin/logger -t curios-pcr "ALERT: TPM2 PCRs mismatch!"
     # Notify all logged-in users via desktop notification
     #for session in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'); do
