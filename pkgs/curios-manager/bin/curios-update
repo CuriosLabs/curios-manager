@@ -20,7 +20,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.60.7"
+readonly SCRIPT_VERSION="0.60.8"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -51,7 +51,7 @@ ${GREY}OPTIONS:${NC}
   ${GREY}--search-pkgs ${YELLOW}PKG_NAME${NC}      Search for a package in NixOS channel using its name. JSON output, use 'package_attr_name' key value for --add-pkg option.
   ${GREY}--add-pkg ${YELLOW}PKG_NAME${NC}          Add a NixOS package into '/etc/nixos/settings.nix', and update the system (--update is implied).
   ${GREY}--fresh-install ${YELLOW}DIR${NC}         Script to run once on a fresh install.
-  ${GREY}--pcr-check${NC}                   TPM2 PCR integrity check: compare stable PCRs (0=firmware, 7=Secure Boot) against baseline. Requires root.
+  ${GREY}--pcr-check${NC}                   TPM2 PCR integrity check: compare stable PCRs (0=firmware, 7=Secure Boot) against baseline. Requires root. Exit code 1 on mismatch.
   ${GREY}-v, --verbose${NC}               Print more information.
   ${GREY}--version${NC}                   Print version number and exit.
 
@@ -307,6 +307,9 @@ pcr_check() {
     #      "TPM measurements changed since last boot (PCR 0/7). System may be compromised. Check: journalctl -t curios-pcr"
     #  fi
     #done
+    # Exit non-zero on mismatch so the systemd oneshot service is marked failed
+    # (visible via systemctl --failed, can trigger OnFailure= units)
+    exit 1
   else
     /run/current-system/sw/bin/logger -t curios-pcr "TPM2 PCRs check OK"
   fi
