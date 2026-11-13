@@ -659,7 +659,7 @@ _enroll_luks_fido2() {
 
 }
 
-#------------- Secure Boot functions (Limine)
+#------------- Secure Boot functions
 
 _get_limine_enabled() {
   curios-update --nixos-option curios.bootefi.limine.enable 2>/dev/null |
@@ -686,7 +686,7 @@ _get_secure_boot_status() {
 }
 
 _enable_secure_boot() {
-  echo -e "${BLUE}Secure Boot Setup (Limine)${NC}"
+  echo -e "${BLUE}Secure Boot Setup${NC}"
   echo ""
 
   if ! available bootctl; then
@@ -708,36 +708,36 @@ _enable_secure_boot() {
   fi
 
   # Step 1: Check if Limine is enabled
-  local LIMINE_ENABLED
-  LIMINE_ENABLED=$(_get_limine_enabled)
+  #local LIMINE_ENABLED
+  #LIMINE_ENABLED=$(_get_limine_enabled)
 
-  if [[ "$LIMINE_ENABLED" != "true" ]]; then
-    echo -e "${YELLOW}Limine bootloader is currently NOT enabled on this system.${NC}"
-    echo -e "Secure Boot with CuriOS requires the Limine bootloader."
-    echo ""
+  #if [[ "$LIMINE_ENABLED" != "true" ]]; then
+  #  echo -e "${YELLOW}Limine bootloader is currently NOT enabled on this system.${NC}"
+  #  echo -e "Secure Boot with CuriOS requires the Limine bootloader."
+  #  echo ""
 
-    if gum confirm "Switch to Limine bootloader now?"; then
-      echo -e "${BLUE}Enabling Limine bootloader...${NC}"
-      sudo whoami 1>/dev/null
-      gum spin --spinner dot --title "Enabling Limine..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.enable true
-      echo ""
-      echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
-      sudo whoami 1>/dev/null
-      gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
-      echo -e "${GREEN}✓ Limine bootloader is now enabled!${NC}"
-      echo ""
-      # Re-check
-      LIMINE_ENABLED=$(_get_limine_enabled)
-    else
-      echo -e "${YELLOW}Secure Boot requires Limine. You can enable it later.${NC}"
-      return
-    fi
-  fi
+  #  if gum confirm "Switch to Limine bootloader now?"; then
+  #    echo -e "${BLUE}Enabling Limine bootloader...${NC}"
+  #    sudo whoami 1>/dev/null
+  #    gum spin --spinner dot --title "Enabling Limine..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.enable true
+  #    echo ""
+  #    echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
+  #    sudo whoami 1>/dev/null
+  #    gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
+  #    echo -e "${GREEN}✓ Limine bootloader is now enabled!${NC}"
+  #    echo ""
+  # Re-check
+  #    LIMINE_ENABLED=$(_get_limine_enabled)
+  #  else
+  #    echo -e "${YELLOW}Secure Boot requires Limine. You can enable it later.${NC}"
+  #    return
+  #  fi
+  #fi
 
-  if [[ "$LIMINE_ENABLED" != "true" ]]; then
-    echo -e "${RED}Failed to enable Limine. Please check the system configuration.${NC}"
-    return
-  fi
+  #if [[ "$LIMINE_ENABLED" != "true" ]]; then
+  #  echo -e "${RED}Failed to enable Limine. Please check the system configuration.${NC}"
+  #  return
+  #fi
 
   # Step 2: Check current Secure Boot status
   local SB_STATUS
@@ -861,7 +861,7 @@ _enable_secure_boot() {
       fi
       echo -e "${GREEN}✓ Secure Boot keys enrolled successfully.${NC}"
       echo ""
-      sudo whoami 1>/dev/null
+      #sudo whoami 1>/dev/null
       # NOTE: not sure if it is needed - `sbctl enroll-keys -m` might download certificates needed for --firmware-builtin
       #
       #if [[ "$CERT_ROM" == true ]]; then
@@ -869,8 +869,8 @@ _enable_secure_boot() {
       #else
       #  gum spin --spinner dot --title "Disabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware false
       #fi
-      gum spin --spinner dot --title "Enabling secure boot module..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.enable true
-      gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
+      #gum spin --spinner dot --title "Enabling secure boot module..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.enable true
+      #gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
       echo ""
       # Verify
       SB_STATUS=$(_get_secure_boot_status)
@@ -903,7 +903,7 @@ _enable_secure_boot() {
   echo -e "To enable Secure Boot, you need to enter Setup Mode in your UEFI firmware."
   echo -e "This usually involves:"
   echo -e "  1. Rebooting the computer"
-  echo -e "  2. In the Limine boot menu, press ${GREEN}S${NC} to enter ${BLUE}Firmware Setup${NC}"
+  echo -e "  2. In the boot menu, select ${BLUE}Reboot Into Firmware Interface${NC}"
   echo -e "  3. In the UEFI firmware, find the Secure Boot settings"
   echo -e "  4. Select ${BLUE}Reset to Setup Mode${NC} ${YELLOW}OR${NC} clear all keys"
   echo -e "  5. Save and exit, rebooting back to CuriOS"
