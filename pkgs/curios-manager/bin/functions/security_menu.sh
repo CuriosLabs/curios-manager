@@ -661,13 +661,8 @@ _enroll_luks_fido2() {
 
 #------------- Secure Boot functions
 
-_get_limine_enabled() {
-  curios-update --nixos-option curios.bootefi.limine.enable 2>/dev/null |
-    sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "unknown"
-}
-
-_get_secure_boot_module_enabled() {
-  curios-update --nixos-option curios.bootefi.limine.secureBoot.enable 2>/dev/null |
+_get_lanzaboote_enabled() {
+  curios-update --nixos-option curios.bootefi.lanzaboote.enable 2>/dev/null |
     sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "unknown"
 }
 
@@ -707,37 +702,37 @@ _enable_secure_boot() {
     return
   fi
 
-  # Step 1: Check if Limine is enabled
-  #local LIMINE_ENABLED
-  #LIMINE_ENABLED=$(_get_limine_enabled)
+  # Step 1: Check if Lanzaboote is enabled
+  local LANZA_ENABLED
+  LANZA_ENABLED=$(_get_lanzaboote_enabled)
 
-  #if [[ "$LIMINE_ENABLED" != "true" ]]; then
-  #  echo -e "${YELLOW}Limine bootloader is currently NOT enabled on this system.${NC}"
-  #  echo -e "Secure Boot with CuriOS requires the Limine bootloader."
-  #  echo ""
+  if [[ "$LANZA_ENABLED" != "true" ]]; then
+    echo -e "${YELLOW}Lanzaboote bootloader is currently NOT enabled on this system.${NC}"
+    echo -e "Secure Boot with CuriOS requires the Lanzaboote bootloader."
+    echo ""
 
-  #  if gum confirm "Switch to Limine bootloader now?"; then
-  #    echo -e "${BLUE}Enabling Limine bootloader...${NC}"
-  #    sudo whoami 1>/dev/null
-  #    gum spin --spinner dot --title "Enabling Limine..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.enable true
-  #    echo ""
-  #    echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
-  #    sudo whoami 1>/dev/null
-  #    gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
-  #    echo -e "${GREEN}✓ Limine bootloader is now enabled!${NC}"
-  #    echo ""
-  # Re-check
-  #    LIMINE_ENABLED=$(_get_limine_enabled)
-  #  else
-  #    echo -e "${YELLOW}Secure Boot requires Limine. You can enable it later.${NC}"
-  #    return
-  #  fi
-  #fi
+    if gum confirm "Switch to Lanzaboote bootloader now?"; then
+      echo -e "${BLUE}Enabling Lanzaboote bootloader...${NC}"
+      sudo whoami 1>/dev/null
+      gum spin --spinner dot --title "Enabling Lanzaboote..." --show-error -- sudo curios-update --update-module curios.bootefi.lanzaboote.enable true
+      echo ""
+      echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
+      sudo whoami 1>/dev/null
+      gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
+      echo -e "${GREEN}✓ Lanzaboote is now enabled!${NC}"
+      echo ""
+      # Re-check
+      LANZA_ENABLED=$(_get_lanzaboote_enabled)
+    else
+      echo -e "${YELLOW}Secure Boot requires Lanzaboote. You can enable it later.${NC}"
+      return
+    fi
+  fi
 
-  #if [[ "$LIMINE_ENABLED" != "true" ]]; then
-  #  echo -e "${RED}Failed to enable Limine. Please check the system configuration.${NC}"
-  #  return
-  #fi
+  if [[ "$LANZA_ENABLED" != "true" ]]; then
+    echo -e "${RED}Failed to enable Lanzaboote. Please check the system configuration.${NC}"
+    return
+  fi
 
   # Step 2: Check current Secure Boot status
   local SB_STATUS
@@ -751,153 +746,19 @@ _enable_secure_boot() {
     return
   fi
 
-  # Step 2b: Check if the Microsoft KEK 2023 certificate is present
-  # This certificate is needed for Secure Boot with the --microsoft flag in sbctl.
-  # If not present, a firmware update may be required.
-  local KEK_OUTPUT
-  KEK_OUTPUT=$(efi-readvar -v KEK 2>/dev/null || true)
-  if [[ -n "$KEK_OUTPUT" ]] && echo "$KEK_OUTPUT" | grep -q "Variable KEK has no entries"; then
-    echo -e "${YELLOW}WARNING:${NC} UEFI KEK database is empty."
-  elif [[ -n "$KEK_OUTPUT" ]] && ! echo "$KEK_OUTPUT" | grep -q "Microsoft Corporation KEK 2K CA 2023"; then
-    echo -e "${YELLOW}WARNING: The Microsoft KEK 2023 certificate is not present in the UEFI KEK database.${NC}"
-    echo -e "This certificate is required for Secure Boot with the --microsoft flag in sbctl."
-    echo -e "A firmware update may be needed to add this certificate."
-    echo ""
-    echo -e "You can update the firmware from the System menu (${BLUE} Firmware${NC})."
-    echo ""
-    if gum confirm "Would you like to go to the System menu to update the firmware now?"; then
-      system_menu
-      return
-    else
-      echo -e "${YELLOW}Continuing without the Microsoft KEK 2023 certificate. Secure Boot may fail.${NC}"
-      echo ""
-    fi
-  fi
-
-  # Step 2c: Check if the Windows UEFI CA 2023 certificate is present in db
-  # This certificate is needed for Secure Boot with the --microsoft flag in sbctl.
-  # If not present, a firmware update may be required.
-  local DB_OUTPUT
-  DB_OUTPUT=$(efi-readvar -v db 2>/dev/null || true)
-  if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
-    echo -e "${YELLOW}WARNING:${NC} UEFI db database is empty."
-  elif [[ -n "$DB_OUTPUT" ]] && ! echo "$DB_OUTPUT" | grep -qE "Windows UEFI CA 2023|Microsoft UEFI CA 2023"; then
-    echo -e "${YELLOW}WARNING: The Windows UEFI CA 2023 / Microsoft UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
-    echo -e "This certificate is required for Secure Boot with the --microsoft flag in sbctl."
-    echo -e "A firmware update may be needed to add this certificate."
-    echo ""
-    echo -e "You can update the firmware from the System menu (${BLUE} Firmware${NC})."
-    echo ""
-    if gum confirm "Would you like to go to the System menu to update the firmware now?"; then
-      system_menu
-      return
-    else
-      echo -e "${YELLOW}Continuing without the Windows UEFI CA 2023 / Microsoft UEFI CA 2023 certificate. Secure Boot may fail.${NC}"
-      echo ""
-    fi
-  fi
-
-  # Step 2d: Check if the Microsoft Option ROM UEFI CA 2023 certificate is present in db
-  # This certificate is needed for hardware Option ROMs (GPU, NIC firmware, etc.)
-  # Some devices require this certificate to boot with Secure Boot enabled.
-  local CERT_ROM
-  CERT_ROM="unknown"
-  if [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Variable db has no entries"; then
-    # We consider that `sbctl --firmware-builtin` will add it.
-    CERT_ROM=false
-  elif [[ -n "$DB_OUTPUT" ]] && echo "$DB_OUTPUT" | grep -q "Microsoft Option ROM UEFI CA 2023"; then
-    CERT_ROM=true
-  elif [[ -n "$DB_OUTPUT" ]]; then
-    CERT_ROM=false
-    echo -e "${YELLOW}WARNING: The Microsoft Option ROM UEFI CA 2023 certificate is not present in the UEFI signature database (db).${NC}"
-    echo -e "This certificate is ${YELLOW}ONLY${NC} needed for certain hardware Option ROMs (e.g., discrete NVIDIA GPUs, some NICs)."
-    echo -e "Systems with integrated graphics (e.g., AMD Ryzen with iGPU, Intel integrated) typically do not require it."
-    echo ""
-    echo -e "You can update the firmware from the System menu (${BLUE} Firmware${NC}) if you suspect you need it."
-    echo ""
-    if gum confirm "Would you like to go to the System menu to update the firmware now?"; then
-      system_menu
-      return
-    else
-      echo -e "${YELLOW}Continuing without the Microsoft Option ROM UEFI CA 2023 certificate. This is usually fine for integrated graphics systems.${NC}"
-      echo ""
-    fi
-  fi
-
-  # Step 3: Create Secure Boot keys manually (as recommended in NixOS wiki)
-  local SBCTL_STATUS
-  SBCTL_STATUS=$(sudo sbctl status 2>/dev/null || true)
-  if echo "$SBCTL_STATUS" | grep -q "sbctl is not installed" && echo "$SBCTL_STATUS" | grep -q "Secure Boot:.*Disabled"; then
-    echo -e "${BLUE}Creating Secure Boot keys...${NC}"
-    sudo sbctl create-keys
-    # Verify that keys were created successfully
-    local SBCTL_STATUS_AFTER
-    SBCTL_STATUS_AFTER=$(sudo sbctl status 2>/dev/null || true)
-    if ! echo "$SBCTL_STATUS_AFTER" | grep -q "sbctl is installed"; then
-      echo -e "${RED}Failed to create Secure Boot keys. sbctl is still not installed.${NC}"
-      echo -e "${YELLOW}Please check the error above and try again.${NC}"
-      return
-    fi
-    echo -e "${GREEN}✓ Secure Boot keys created successfully.${NC}"
-  fi
-
-  # Step 4: Check if we are in UEFI Setup Mode
+  # Step 3: Check if we are in UEFI Setup Mode
   if [[ "$SB_STATUS" == *"setup"* ]]; then
     echo -e "${GREEN}✓ System is in UEFI Secure Boot Setup Mode.${NC}"
-    echo -e "${BLUE}Rebuilding the system will now enroll the generated keys automatically.${NC}"
+    echo -e "${BLUE}Rebooting the system will now enroll generated keys automatically.${NC}"
     echo ""
 
-    if gum confirm "Rebuild and enroll Secure Boot keys now?"; then
-      echo -e "${BLUE}Applying system configuration to enroll keys...${NC}"
-      local SBCTL_ARGS="-m"
-      if [[ "$CERT_ROM" == true ]]; then
-        SBCTL_ARGS="-m -f"
-        echo -e "${BLUE}Firmware certificate will also be enrolled...${NC}"
-      fi
-      if ! sudo sbctl enroll-keys "${SBCTL_ARGS}"; then
-        echo -e "${RED}Failed to enroll Secure Boot keys.${NC}"
-        echo -e "${YELLOW}Please ensure you are in UEFI Setup Mode and try again.${NC}"
-        return
-      fi
-      echo -e "${GREEN}✓ Secure Boot keys enrolled successfully.${NC}"
-      echo ""
-      #sudo whoami 1>/dev/null
-      # NOTE: not sure if it is needed - `sbctl enroll-keys -m` might download certificates needed for --firmware-builtin
-      #
-      #if [[ "$CERT_ROM" == true ]]; then
-      #  gum spin --spinner dot --title "Enabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware true
-      #else
-      #  gum spin --spinner dot --title "Disabling secure boot firmware builtin..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.firmware false
-      #fi
-      #gum spin --spinner dot --title "Enabling secure boot module..." --show-error -- sudo curios-update --update-module curios.bootefi.limine.secureBoot.enable true
-      #gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
-      echo ""
-      # Verify
-      SB_STATUS=$(_get_secure_boot_status)
-      if [[ "$SB_STATUS" == "enabled"* ]]; then
-        echo -e "${GREEN}✓ Secure Boot is now enabled!${NC}"
-        echo ""
-        echo -e "${YELLOW}Next steps:${NC}"
-        echo -e "  1. Reboot to verify that Secure Boot works correctly"
-        echo -e "  2. If needed, re-enable Secure Boot manually in your UEFI firmware"
-        echo ""
-        if gum confirm "Reboot now?"; then
-          systemctl reboot
-        fi
-      else
-        echo -e "${YELLOW}Keys were enrolled but Secure Boot is not yet reported as enabled.${NC}"
-        echo -e "${YELLOW}A reboot may be required. Please run this menu again after rebooting.${NC}"
-        if gum confirm "Reboot now?"; then
-          systemctl reboot
-        fi
-      fi
-    else
-      echo -e "${YELLOW}Rebuild cancelled. Run this menu again when ready to enroll keys.${NC}"
+    if gum confirm "Reboot now?"; then
+      systemctl reboot
     fi
     return
   fi
 
-  # Step 5: If we are not in setup mode and not enabled, guide the user
+  # Step 4: If we are not in setup mode and not enabled, guide the user
   echo -e "${YELLOW}Your system is currently NOT in UEFI Secure Boot Setup Mode.${NC}"
   echo ""
   echo -e "To enable Secure Boot, you need to enter Setup Mode in your UEFI firmware."
