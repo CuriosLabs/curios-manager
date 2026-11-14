@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# CuriOS TPM2 PCR alert notifier (runs in the user session).
+#
+# The boot service curios-pcr-check.service (root) writes the boot ID to
+# /var/lib/curios/pcr-alert when PCR 0/7 mismatch the baseline. The session
+# D-Bus bus only exists after login, so the desktop notification is deferred
+# to this user unit: one notification per boot and per user session.
+#
+# Usage:
+#       curios-pcr-notify
+
+set -eu
+
+readonly ALERT_FLAG="/var/lib/curios/pcr-alert"
+readonly MARKER="${XDG_RUNTIME_DIR:-/tmp}/curios-pcr-alert-notified"
+
+if [ -f "$ALERT_FLAG" ] && [ ! -f "$MARKER" ]; then
+  BOOT_ID="$(cat "$ALERT_FLAG" 2>/dev/null || true)"
+  notify-send -a "Security Alert" --icon="curios" --urgency=critical --expire-time=8000 \
+    "TPM2 PCR 0/7 mismatch at boot (${BOOT_ID:-unknown boot}). System may be compromised. Check: journalctl -t curios-pcr"
+  touch "$MARKER"
+fi
