@@ -20,7 +20,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.60.8"
+readonly SCRIPT_VERSION="0.60.9"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -280,9 +280,15 @@ reboot_check() {
 
 # TPM2 PCR integrity check: compare stable PCRs (0,7) against baseline
 # and alert the user if they changed (e.g. firmware updated, Secure Boot disabled).
-# Check with: journalctl -t curios-pcr
+# On mismatch the boot ID is written to $ALERT_FLAG so the user-session unit
+# curios-pcr-alert.service can notify the user at login (the session D-Bus bus
+# does not exist yet at boot time, a direct notify-send would be lost).
+# Check with:
+# journalctl -t curios-pcr
+# systemctl list-units --type=service --state=failed
 pcr_check() {
   BASELINE=/var/lib/curios/pcr-baseline
+  ALERT_FLAG=/var/lib/curios/pcr-alert
   mkdir -p /var/lib/curios
 
   # Stable PCRs: 0 (firmware code), 7 (Secure Boot state: PK/KEK/db/dbx)
@@ -290,27 +296,18 @@ pcr_check() {
 
   if [ ! -f "$BASELINE" ]; then
     echo "$CURRENT" >"$BASELINE"
+    rm -f "$ALERT_FLAG"
     /run/current-system/sw/bin/logger -t curios-pcr "Baseline created"
     exit 0
   fi
 
   if ! /run/current-system/sw/bin/diff <(/run/current-system/sw/bin/cat "$BASELINE") <(/run/current-system/sw/bin/echo "$CURRENT") >/dev/null; then
     /run/current-system/sw/bin/logger -t curios-pcr "ALERT: TPM2 PCR 0/7 mismatch! Firmware or Secure Boot state changed since baseline."
-    # Notify all logged-in users via desktop notification
-    #for session in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'); do
-    #  user=$(loginctl show-session "$session" -p Name --value 2>/dev/null)
-    #  uid=$(id -u "$user" 2>/dev/null)
-    #  if [ -n "$user" ] && [ -n "$uid" ]; then
-    #    sudo -u "$user" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
-    #      notify-send --urgency=critical --icon=dialog-warning \
-    #      "⚠️ CuriOS Security Alert" \
-    #      "TPM measurements changed since last boot (PCR 0/7). System may be compromised. Check: journalctl -t curios-pcr"
-    #  fi
-    #done
-    # Exit non-zero on mismatch so the systemd oneshot service is marked failed
-    # (visible via systemctl --failed, can trigger OnFailure= units)
+    # Flag for deferred notification at user login (curios-pcr-alert.service)
+    cat /proc/sys/kernel/random/boot_id >"$ALERT_FLAG"
     exit 1
   else
+    rm -f "$ALERT_FLAG"
     /run/current-system/sw/bin/logger -t curios-pcr "TPM2 PCRs check OK"
   fi
 
