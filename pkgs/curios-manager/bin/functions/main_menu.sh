@@ -26,14 +26,14 @@ main_menu() {
   " Update")
     sudo whoami 1>/dev/null # Force prompt for sudo password now
     gum spin --spinner dot --title "Updating packages..." --show-error -- sudo curios-update --update
-    nixos-rebuild list-generations | head -n 6
     reboot_check
+    echo -e "${GREEN}Done.${NC}"
     ;;
   " Upgrade")
     sudo whoami 1>/dev/null # Force prompt for sudo password now
     gum spin --spinner dot --title "Upgrading CuriOS..." --show-error -- sudo curios-update --upgrade
-    nixos-rebuild list-generations | head -n 6
     reboot_check
+    echo -e "${GREEN}Done.${NC}"
     ;;
   "󱘸 Backup")
     backup_menu
