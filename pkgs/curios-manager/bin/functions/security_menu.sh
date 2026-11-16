@@ -64,7 +64,7 @@ security_menu() {
   local SECURITY_MENU
   SECURITY_MENU=$(gum choose --header "Security - Select an option:" \
     "🔐 Enroll YubiKey for full disk decryption" \
-    "🔗 Enable Secure Boot" \
+    "🔗 Enable Secure Boot with TPM2" \
     "🔑 Register primary YubiKey for user login/sudo (PAM)" \
     "󰐕 Add additional YubiKey for user login/sudo (PAM)" \
     " View current PAM/U2F keys file" \
@@ -89,7 +89,7 @@ security_menu() {
     _enroll_luks_fido2
     security_menu
     ;;
-  "🔗 Enable Secure Boot")
+  "🔗 Enable Secure Boot with TPM2")
     _enable_secure_boot
     security_menu
     ;;
@@ -666,6 +666,11 @@ _get_lanzaboote_enabled() {
     sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "unknown"
 }
 
+_get_tpm2_enabled() {
+  curios-update --nixos-option curios.security.tpm2.enable 2>/dev/null |
+    sed -n '/^Value:/{n;p;}' | tr -d ' " ' || echo "unknown"
+}
+
 _get_secure_boot_status() {
   if ! available bootctl; then
     echo "unknown"
@@ -681,7 +686,7 @@ _get_secure_boot_status() {
 }
 
 _enable_secure_boot() {
-  echo -e "${BLUE}Secure Boot Setup${NC}"
+  echo -e "${BLUE}Secure Boot + TPM2 Setup${NC}"
   echo ""
 
   if ! available bootctl; then
@@ -705,8 +710,10 @@ _enable_secure_boot() {
   # Step 1: Check if Lanzaboote is enabled
   local LANZA_ENABLED
   LANZA_ENABLED=$(_get_lanzaboote_enabled)
+  local TPM2_ENABLED
+  TPM2_ENABLED=$(_get_tpm2_enabled)
 
-  if [[ "$LANZA_ENABLED" != "true" ]]; then
+  if [[ "$LANZA_ENABLED" != "true" || "$TPM2_ENABLED" != "true" ]]; then
     echo -e "${YELLOW}Lanzaboote bootloader is currently NOT enabled on this system.${NC}"
     echo -e "Secure Boot with CuriOS requires the Lanzaboote bootloader."
     echo ""
@@ -714,7 +721,10 @@ _enable_secure_boot() {
     if gum confirm "Switch to Lanzaboote bootloader now?"; then
       echo -e "${BLUE}Enabling Lanzaboote bootloader...${NC}"
       sudo whoami 1>/dev/null
-      gum spin --spinner dot --title "Enabling Lanzaboote..." --show-error -- sudo curios-update --update-module curios.bootefi.lanzaboote.enable true
+      gum spin --spinner dot --title "Enabling Lanzaboote bootloader..." --show-error -- sudo curios-update --update-module curios.bootefi.lanzaboote.enable true
+      gum spin --spinner dot --title "Enabling TPM2..." --show-error -- sudo curios-update --update-module curios.security.tpm2.enable true
+      gum spin --spinner dot --title "Enabling TPM2 integrity check..." --show-error -- sudo curios-update --update-module curios.security.tpm2.integrityCheck true
+      gum spin --spinner dot --title "Enabling TPM2 measure boot..." --show-error -- sudo curios-update --update-module curios.security.tpm2.measuredBoot true
       echo ""
       echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
       sudo whoami 1>/dev/null
@@ -723,6 +733,7 @@ _enable_secure_boot() {
       echo ""
       # Re-check
       LANZA_ENABLED=$(_get_lanzaboote_enabled)
+      TPM2_ENABLED=$(_get_tpm2_enabled)
     else
       echo -e "${YELLOW}Secure Boot requires Lanzaboote. You can enable it later.${NC}"
       return
@@ -731,6 +742,11 @@ _enable_secure_boot() {
 
   if [[ "$LANZA_ENABLED" != "true" ]]; then
     echo -e "${RED}Failed to enable Lanzaboote. Please check the system configuration.${NC}"
+    return
+  fi
+
+  if [[ "$TPM2_ENABLED" != "true" ]]; then
+    echo -e "${RED}Failed to enable TPM2. Please check the system configuration.${NC}"
     return
   fi
 
