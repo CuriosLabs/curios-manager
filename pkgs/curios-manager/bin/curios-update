@@ -20,7 +20,7 @@
 
 set -eu
 
-readonly SCRIPT_VERSION="0.60.12"
+readonly SCRIPT_VERSION="0.60.13"
 readonly CURIOS_MODULES_FILE="/etc/nixos/modules.json"
 #------------- Colors -------------#
 readonly RED="\033[31;1m"      # Red and bold
@@ -296,6 +296,7 @@ pcr_check() {
 
   if [ ! -f "$BASELINE" ]; then
     echo "$CURRENT" >"$BASELINE"
+    chmod 0600 "$BASELINE"
     rm -f "$ALERT_FLAG"
     /run/current-system/sw/bin/logger -t curios-pcr "Baseline created"
     exit 0

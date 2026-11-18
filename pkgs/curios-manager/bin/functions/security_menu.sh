@@ -685,6 +685,52 @@ _get_secure_boot_status() {
   echo "$status"
 }
 
+_cleanup_limine_bootloader() {
+  # Limine was the bootloader before systemd-boot/Lanzaboote. Its UEFI boot
+  # entry and its files on the ESP persist across system updates, so the
+  # firmware may keep booting Limine even after switching bootloader.
+  local limine_entries=""
+  if available efibootmgr; then
+    limine_entries=$(efibootmgr 2>/dev/null | grep -i "limine" | sed -n 's/^Boot\([0-9A-Fa-f]\{4\}\).*/\1/p' || true)
+  fi
+  local has_limine_files=false
+  if [[ -d /boot/EFI/limine || -d /boot/limine ]]; then
+    has_limine_files=true
+  fi
+
+  if [[ -z "$limine_entries" && "$has_limine_files" == "false" ]]; then
+    return 0
+  fi
+
+  echo -e "${BLUE}Cleaning up Limine bootloader leftovers...${NC}"
+  sudo whoami 1>/dev/null # Force prompt for sudo password now
+
+  if [[ -n "$limine_entries" ]]; then
+    while IFS= read -r entry; do
+      if sudo efibootmgr --bootnum "$entry" --delete-bootnum 2>/dev/null; then
+        echo -e "${GREEN}✓ Removed UEFI boot entry Boot${entry} (Limine)${NC}"
+      else
+        echo -e "${YELLOW}Could not remove UEFI boot entry Boot${entry}${NC}"
+      fi
+    done <<< "$limine_entries"
+  fi
+
+  if [[ "$has_limine_files" == "true" ]]; then
+    sudo rm -rf /boot/EFI/limine /boot/limine
+    echo -e "${GREEN}✓ Removed /boot/EFI/limine and /boot/limine from the ESP${NC}"
+  fi
+
+  # Make sure the active bootloader is installed on the ESP and registered in
+  # the NVRAM. Skip when Lanzaboote is enabled: its activation installs the
+  # signed systemd-boot stub itself, and `bootctl install` would overwrite it
+  # with an unsigned binary (breaking Secure Boot).
+  if [[ "$(_get_lanzaboote_enabled)" != "true" ]] && available bootctl; then
+    if sudo bootctl install 2>/dev/null; then
+      echo -e "${GREEN}✓ systemd-boot installed on the ESP (bootctl install)${NC}"
+    fi
+  fi
+}
+
 _enable_secure_boot() {
   echo -e "${BLUE}Secure Boot + TPM2 Setup${NC}"
   echo ""
@@ -739,6 +785,10 @@ _enable_secure_boot() {
       return
     fi
   fi
+
+  # Remove Limine bootloader leftovers (NVRAM entry + ESP files) if present,
+  # then make sure the active bootloader is installed on the ESP.
+  _cleanup_limine_bootloader
 
   if [[ "$LANZA_ENABLED" != "true" ]]; then
     echo -e "${RED}Failed to enable Lanzaboote. Please check the system configuration.${NC}"
