@@ -928,54 +928,7 @@ _enable_secure_boot() {
     return
   fi
 
-  # Step 1: Check if Lanzaboote is enabled
-  local LANZA_ENABLED
-  LANZA_ENABLED=$(_get_lanzaboote_enabled)
-  local TPM2_ENABLED
-  TPM2_ENABLED=$(_get_tpm2_enabled)
-
-  if [[ "$LANZA_ENABLED" != "true" || "$TPM2_ENABLED" != "true" ]]; then
-    echo -e "${YELLOW}Lanzaboote bootloader is currently NOT enabled on this system.${NC}"
-    echo -e "Secure Boot with CuriOS requires the Lanzaboote bootloader."
-    echo ""
-
-    if gum confirm "Switch to Lanzaboote bootloader now?"; then
-      echo -e "${BLUE}Enabling Lanzaboote bootloader...${NC}"
-      sudo whoami 1>/dev/null
-      gum spin --spinner dot --title "Enabling Lanzaboote bootloader..." --show-error -- sudo curios-update --update-module curios.bootefi.lanzaboote.enable true
-      gum spin --spinner dot --title "Enabling TPM2..." --show-error -- sudo curios-update --update-module curios.security.tpm2.enable true
-      gum spin --spinner dot --title "Enabling TPM2 integrity check..." --show-error -- sudo curios-update --update-module curios.security.tpm2.integrityCheck true
-      gum spin --spinner dot --title "Enabling TPM2 measure boot..." --show-error -- sudo curios-update --update-module curios.security.tpm2.measuredBoot true
-      echo ""
-      echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
-      sudo whoami 1>/dev/null
-      gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
-      echo -e "${GREEN}✓ Lanzaboote is now enabled!${NC}"
-      echo ""
-      # Re-check
-      LANZA_ENABLED=$(_get_lanzaboote_enabled)
-      TPM2_ENABLED=$(_get_tpm2_enabled)
-    else
-      echo -e "${YELLOW}Secure Boot requires Lanzaboote. You can enable it later.${NC}"
-      return
-    fi
-  fi
-
-  # Remove Limine bootloader leftovers (NVRAM entry + ESP files) if present,
-  # then make sure the active bootloader is installed on the ESP.
-  _cleanup_limine_bootloader
-
-  if [[ "$LANZA_ENABLED" != "true" ]]; then
-    echo -e "${RED}Failed to enable Lanzaboote. Please check the system configuration.${NC}"
-    return
-  fi
-
-  if [[ "$TPM2_ENABLED" != "true" ]]; then
-    echo -e "${RED}Failed to enable TPM2. Please check the system configuration.${NC}"
-    return
-  fi
-
-  # Step 2: Check current Secure Boot status
+  # Step 1: Check current Secure Boot status
   local SB_STATUS
   SB_STATUS=$(_get_secure_boot_status)
   echo -e "${BLUE}Current Secure Boot status: ${YELLOW}${SB_STATUS}${NC}"
@@ -987,39 +940,80 @@ _enable_secure_boot() {
     return
   fi
 
-  # Step 3: Check if we are in UEFI Setup Mode
+  # Step 2: Check if we are in UEFI Setup Mode
   if [[ "$SB_STATUS" == *"setup"* ]]; then
     echo -e "${GREEN}✓ System is in UEFI Secure Boot Setup Mode.${NC}"
-    echo -e "${BLUE}Rebooting the system will now enroll generated keys automatically.${NC}"
-    echo ""
+    # Step 2bis: Check if Lanzaboote is enabled
+    local LANZA_ENABLED
+    LANZA_ENABLED=$(_get_lanzaboote_enabled)
+    local TPM2_ENABLED
+    TPM2_ENABLED=$(_get_tpm2_enabled)
 
-    if gum confirm "Reboot now?"; then
-      systemctl reboot
+    if [[ "$LANZA_ENABLED" != "true" || "$TPM2_ENABLED" != "true" ]]; then
+      echo -e "${YELLOW}Lanzaboote bootloader is currently NOT enabled on this system.${NC}"
+      echo -e "Secure Boot with CuriOS requires the Lanzaboote bootloader."
+      echo ""
+
+      if gum confirm "Switch to Lanzaboote bootloader now?"; then
+        echo -e "${BLUE}Enabling Lanzaboote bootloader...${NC}"
+        sudo whoami 1>/dev/null
+        gum spin --spinner dot --title "Enabling Lanzaboote bootloader..." --show-error -- sudo curios-update --update-module curios.bootefi.lanzaboote.enable true
+        gum spin --spinner dot --title "Enabling TPM2..." --show-error -- sudo curios-update --update-module curios.security.tpm2.enable true
+        gum spin --spinner dot --title "Enabling TPM2 integrity check..." --show-error -- sudo curios-update --update-module curios.security.tpm2.integrityCheck true
+        gum spin --spinner dot --title "Enabling TPM2 measure boot..." --show-error -- sudo curios-update --update-module curios.security.tpm2.measuredBoot true
+        echo ""
+        echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
+        sudo whoami 1>/dev/null
+        gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
+        echo -e "${GREEN}✓ Lanzaboote is now enabled!${NC}"
+        echo ""
+        # Re-check
+        LANZA_ENABLED=$(_get_lanzaboote_enabled)
+        TPM2_ENABLED=$(_get_tpm2_enabled)
+        # Remove Limine bootloader leftovers (NVRAM entry + ESP files) if present,
+        # then make sure the active bootloader is installed on the ESP.
+        _cleanup_limine_bootloader
+      else
+        echo -e "${YELLOW}Secure Boot requires Lanzaboote. You can enable it later.${NC}"
+        return
+      fi
+    fi
+
+    if [[ "$LANZA_ENABLED" != "true" ]]; then
+      echo -e "${RED}Failed to enable Lanzaboote. Please check the system configuration.${NC}"
+      return
+    fi
+
+    if [[ "$TPM2_ENABLED" != "true" ]]; then
+      echo -e "${RED}Failed to enable TPM2. Please check the system configuration.${NC}"
+      return
     fi
     return
   fi
 
-  # Step 4: If we are not in setup mode and not enabled, guide the user
-  echo -e "${YELLOW}Your system is currently NOT in UEFI Secure Boot Setup Mode.${NC}"
-  echo ""
-  echo -e "To enable Secure Boot, you need to enter Setup Mode in your UEFI firmware."
-  echo -e "This usually involves:"
-  echo -e "  1. Rebooting the computer"
-  echo -e "  2. In the boot menu, select ${BLUE}Reboot Into Firmware Interface${NC}"
-  echo -e "  3. In the UEFI firmware, find the Secure Boot settings"
-  echo -e "  4. Select ${BLUE}Reset to Setup Mode${NC} ${YELLOW}OR${NC} clear all keys"
-  echo -e "  5. Save and exit, rebooting back to CuriOS"
-  echo ""
-  echo -e "${YELLOW}Important:${NC} Do not select 'Clear All Secure Boot Keys' on ThinkPad devices."
-  echo -e "Use 'Reset to Setup Mode' instead."
-  echo ""
-  echo -e "Once back in CuriOS, open this menu again to complete the enrollment."
-  echo ""
+  # Step 3: If we are not in setup mode and not enabled, guide the user
+  if [[ "$SB_STATUS" == "disabled"* ]]; then
+    echo -e "${YELLOW}Your system is currently NOT in UEFI Secure Boot Setup Mode.${NC}"
+    echo ""
+    echo -e "To enable Secure Boot, you need to enter Setup Mode in your UEFI firmware."
+    echo -e "This usually involves:"
+    echo -e "  1. Rebooting the computer"
+    echo -e "  2. In the boot menu, select ${BLUE}Reboot Into Firmware Interface${NC}"
+    echo -e "  3. In the UEFI firmware, find the Secure Boot settings"
+    echo -e "  4. Select ${BLUE}Reset to Setup Mode${NC} ${YELLOW}OR${NC} ${BLUE}Windows UEFI mode${NC} ${YELLOW}AND${NC} clear all keys"
+    echo -e "  5. Save and exit, rebooting back to CuriOS"
+    echo ""
+    echo -e "${YELLOW}Important:${NC} Do not select 'Clear All Secure Boot Keys' on ThinkPad devices."
+    echo -e "Use 'Reset to Setup Mode' instead."
+    echo ""
+    echo -e "Once back in CuriOS, open this menu again to complete the enrollment."
+    echo ""
 
-  if gum confirm "Reboot now to enter Firmware Setup?"; then
-    systemctl reboot --firmware-setup
-  else
-    echo -e "${YELLOW}You can reboot later. Remember to run this menu again after entering Setup Mode.${NC}"
+    if gum confirm "Reboot now to enter Firmware Setup?"; then
+      systemctl reboot --firmware-setup
+    else
+      echo -e "${YELLOW}You can reboot later. Remember to run this menu again after entering Setup Mode.${NC}"
+    fi
   fi
 }
 
