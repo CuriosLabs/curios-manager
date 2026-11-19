@@ -410,15 +410,19 @@ update_curios_modules() {
     exit 1
   fi
 
-  # Check if key exists
-  if [[ $(jq -r "$jq_path" "$CURIOS_MODULES_FILE" 2>/dev/null) == "null" ]]; then
+  # Check if key exists. Test the path itself, not the value: a key holding
+  # JSON null is valid and must not be confused with a missing key.
+  if ! jq -e "path($jq_path) as \$p | (getpath(\$p[0:-1]) // {}) | has(\$p[-1])" "$CURIOS_MODULES_FILE" >/dev/null 2>&1; then
     echo -e "${RED}Error: Key '$key' not found in $CURIOS_MODULES_FILE${NC}"
     exit 1
   fi
 
-  # Handle boolean vs string
-  if [[ "$value" == "true" || "$value" == "false" ]]; then
-    jq "$jq_path = $value" "$CURIOS_MODULES_FILE" >"$tmp_json"
+  # Handle JSON values vs plain strings. A value that is valid JSON (null,
+  # booleans, numbers, arrays, objects, quoted strings) is injected with
+  # --argjson, so 'null' is stored as JSON null, not as the string "null".
+  # Anything else is stored as a plain string with --arg.
+  if [[ -n "$value" ]] && printf '%s' "$value" | jq -e 'type' >/dev/null 2>&1; then
+    jq --argjson val "$value" "$jq_path = \$val" "$CURIOS_MODULES_FILE" >"$tmp_json"
   else
     jq --arg val "$value" "$jq_path = \$val" "$CURIOS_MODULES_FILE" >"$tmp_json"
   fi
