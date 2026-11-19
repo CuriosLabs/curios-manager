@@ -74,3 +74,7 @@ test *FLAGS:
 # Launch curios-update bash script directly (not the Nix pkgs).
 test-update *FLAGS:
   ./pkgs/curios-manager/bin/curios-update {{FLAGS}}
+
+# Launch curios-pcr-notify bash script directly (not the Nix pkgs).
+test-pcr-notify *FLAGS:
+  ./pkgs/curios-manager/bin/curios-pcr-notify {{FLAGS}}
