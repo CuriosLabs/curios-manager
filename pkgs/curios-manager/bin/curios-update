@@ -289,7 +289,10 @@ reboot_check() {
 pcr_check() {
   BASELINE=/var/lib/curios/pcr-baseline
   ALERT_FLAG=/var/lib/curios/pcr-alert
+  # 0755 so the user-session notifier (curios-pcr-notify) can traverse the dir
+  # and read $ALERT_FLAG. Only $BASELINE stays 0600 (root-only).
   mkdir -p /var/lib/curios
+  chmod 0755 /var/lib/curios
 
   # Stable PCRs: 0 (firmware code), 7 (Secure Boot state: PK/KEK/db/dbx)
   CURRENT=$(/run/current-system/sw/bin/tpm2_pcrread sha256:0,7 2>/dev/null | /run/current-system/sw/bin/awk '{$1=$1};1')
@@ -305,7 +308,9 @@ pcr_check() {
   if ! /run/current-system/sw/bin/diff <(/run/current-system/sw/bin/cat "$BASELINE") <(/run/current-system/sw/bin/echo "$CURRENT") >/dev/null; then
     /run/current-system/sw/bin/logger -t curios-pcr "ALERT: TPM2 PCR 0/7 mismatch! Firmware or Secure Boot state changed since baseline."
     # Flag for deferred notification at user login (curios-pcr-alert.service)
+    # 0644: the boot ID is not sensitive and must be readable by the user session.
     cat /proc/sys/kernel/random/boot_id >"$ALERT_FLAG"
+    chmod 0644 "$ALERT_FLAG"
     exit 1
   else
     rm -f "$ALERT_FLAG"
