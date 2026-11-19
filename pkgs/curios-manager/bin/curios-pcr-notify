@@ -17,7 +17,7 @@ readonly MARKER="${XDG_RUNTIME_DIR:-/tmp}/curios-pcr-alert-notified"
 
 if [ -f "$ALERT_FLAG" ] && [ ! -f "$MARKER" ]; then
   BOOT_ID="$(cat "$ALERT_FLAG" 2>/dev/null || true)"
-  notify-send -a "Security Alert" --icon="curios" --urgency=critical --expire-time=8000 \
+  /run/current-system/sw/bin/notify-send -a "Security Alert" --icon="curios" --urgency=critical --expire-time=8000 \
     "TPM2 PCR 0/7 mismatch at boot (${BOOT_ID:-unknown boot}). System may be compromised. Check: journalctl -t curios-pcr"
   touch "$MARKER"
 fi
