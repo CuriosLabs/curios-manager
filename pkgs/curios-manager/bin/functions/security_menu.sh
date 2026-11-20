@@ -62,10 +62,10 @@ security_menu() {
   fi
 
   local SECURITY_MENU
-  SECURITY_MENU=$(gum choose --height 12 --header "Security - Select an option:" \
+  SECURITY_MENU=$(gum choose --height 13 --header "Security - Select an option:" \
+    "🔗 Enable Secure Boot with TPM2" \
     "🪪 Enroll TPM2 PIN for full disk decryption" \
     "🔐 Enroll YubiKey for full disk decryption" \
-    "🔗 Enable Secure Boot with TPM2" \
     "🛡️ Enable AppArmor" \
     "🔑 Register primary YubiKey for user login/sudo (PAM)" \
     "󰐕 Add additional YubiKey for user login/sudo (PAM)" \
@@ -73,6 +73,7 @@ security_menu() {
     "󰙨 Test PAM authentication" \
     "🐚 Add SSH key to YubiKey" \
     "📋 List YubiKey SSH/passkeys" \
+    "🔓 Disable Secure Boot with TPM2" \
     " Back")
 
   case $SECURITY_MENU in
@@ -116,6 +117,10 @@ security_menu() {
     ;;
   "🛡️ Enable AppArmor")
     _enable_apparmor
+    security_menu
+    ;;
+  "🔓 Disable Secure Boot with TPM2")
+    _disable_secure_boot
     security_menu
     ;;
   " Back")
@@ -1014,6 +1019,66 @@ _enable_secure_boot() {
     else
       echo -e "${YELLOW}You can reboot later. Remember to run this menu again after entering Setup Mode.${NC}"
     fi
+  fi
+}
+
+_disable_secure_boot() {
+  echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
+  echo -e "${RED}              ⚠  DISABLE SECURE BOOT WARNING  ⚠${NC}"
+  echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
+  echo ""
+  echo -e "${YELLOW}This will DISABLE the following on your system:${NC}"
+  echo -e "  • Secure Boot"
+  echo -e "  • TPM2 module"
+  echo -e "  • TPM2 integrity check"
+  echo -e "  • TPM2 measured boot"
+  echo ""
+  echo -e "${RED}Consequences:${NC}"
+  echo -e "  • Your system will boot ${RED}WITHOUT${NC} Secure Boot protection."
+  echo -e "  • TPM2-based disk decryption (PIN/measured boot) will stop working."
+  echo -e "  • The system becomes vulnerable to boot-level attacks (evil maid, etc.)."
+  echo ""
+  echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+  echo ""
+
+  if ! gum confirm "Are you ABSOLUTELY SURE you want to disable Secure Boot with TPM2?" --default=false; then
+    echo -e "${GREEN}Operation cancelled.${NC}"
+    return
+  fi
+
+  # Double confirmation for such a destructive action
+  if ! gum confirm "Final confirmation: disable Secure Boot + TPM2 now?" --default=false; then
+    echo -e "${GREEN}Operation cancelled.${NC}"
+    return
+  fi
+
+  echo ""
+  echo -e "${BLUE}Disabling Secure Boot + TPM2 modules...${NC}"
+  sudo whoami 1>/dev/null # Force prompt for sudo password now
+  gum spin --spinner dot --title "Disabling Lanzaboote bootloader..." --show-error -- sudo curios-update --update-module curios.bootefi.lanzaboote.enable false
+  gum spin --spinner dot --title "Disabling TPM2..." --show-error -- sudo curios-update --update-module curios.security.tpm2.enable false
+  gum spin --spinner dot --title "Disabling TPM2 integrity check..." --show-error -- sudo curios-update --update-module curios.security.tpm2.integrityCheck false
+  gum spin --spinner dot --title "Disabling TPM2 measured boot..." --show-error -- sudo curios-update --update-module curios.security.tpm2.measuredBoot false
+  echo ""
+
+  # Clean up Limine bootloader leftovers and ensure the active bootloader is installed
+  _cleanup_limine_bootloader
+
+  echo ""
+  echo -e "${BLUE}Applying system configuration. This can take several minutes...${NC}"
+  echo -e "${YELLOW}You will be prompted for your sudo password if needed.${NC}"
+  sudo whoami 1>/dev/null # Force prompt for sudo password now
+  gum spin --spinner dot --title "Updating system..." --show-error -- sudo curios-update --update
+
+  echo ""
+  echo -e "${GREEN}✓ Secure Boot with TPM2 has been disabled.${NC}"
+  echo -e "${YELLOW}A reboot is required for the changes to take full effect.${NC}"
+  echo ""
+
+  if gum confirm "Reboot now?"; then
+    systemctl reboot
+  else
+    echo -e "${YELLOW}You can reboot later."
   fi
 }
 
