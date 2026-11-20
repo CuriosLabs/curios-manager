@@ -73,7 +73,7 @@ security_menu() {
     "󰙨 Test PAM authentication" \
     "🐚 Add SSH key to YubiKey" \
     "📋 List YubiKey SSH/passkeys" \
-    "🔓 Disable Secure Boot with TPM2" \
+    "🔓 Disable Secure Boot and TPM2 checks" \
     " Back")
 
   case $SECURITY_MENU in
@@ -119,7 +119,7 @@ security_menu() {
     _enable_apparmor
     security_menu
     ;;
-  "🔓 Disable Secure Boot with TPM2")
+  "🔓 Disable Secure Boot and TPM2 checks")
     _disable_secure_boot
     security_menu
     ;;
