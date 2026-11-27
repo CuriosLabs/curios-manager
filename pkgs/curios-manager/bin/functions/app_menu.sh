@@ -70,7 +70,11 @@ _search_new_package() {
     app_menu
   fi
 
-  PKGS_LIST=$(nix-search --channel "$VERSION_ID" --json "$SEARCH_NAME")
+  if [ "$VARIANT_ID" = "unstable" ]; then
+    PKGS_LIST=$(nix-search --channel "unstable" --json "$SEARCH_NAME")
+  else
+    PKGS_LIST=$(nix-search --channel "$VERSION_ID" --json "$SEARCH_NAME")
+  fi
   CHOSEN_PKG=$(echo "$PKGS_LIST" | jq -r '. | "\(.package_attr_name)\t\(.package_pversion)\t\(.package_description)"' | gum choose --limit=1 --header "Choose a package to install:")
 
   if [ -z "$CHOSEN_PKG" ]; then
